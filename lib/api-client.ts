@@ -74,47 +74,41 @@ class ApiClient {
 
       let data: any
 
-      // Clone the response to avoid "body stream already read" errors
-      const responseClone = response.clone()
-
       try {
         // Check if response has content before trying to parse
         const contentType = response.headers.get('content-type')
         console.log('Response content-type:', contentType)
 
-        if (contentType && contentType.includes('application/json')) {
-          data = await response.json()
-        } else {
-          // For non-JSON responses or empty responses, use the clone
-          const text = await responseClone.text()
-          console.log('Response text:', text)
+        // Always read as text first to avoid body stream issues
+        const text = await response.text()
+        console.log('Response text:', text)
 
-          if (!text) {
-            data = {}
-          } else if (text.startsWith('{') || text.startsWith('[')) {
-            try {
-              data = JSON.parse(text)
-            } catch (jsonError) {
-              console.warn('Failed to parse JSON-like text:', jsonError)
-              data = { message: text }
-            }
-          } else {
+        if (!text) {
+          data = {}
+        } else if (contentType && contentType.includes('application/json')) {
+          // Parse as JSON if content-type suggests it
+          try {
+            data = JSON.parse(text)
+          } catch (jsonError) {
+            console.warn('Failed to parse JSON despite content-type:', jsonError)
             data = { message: text }
           }
+        } else if (text.startsWith('{') || text.startsWith('[')) {
+          // Try to parse as JSON if it looks like JSON
+          try {
+            data = JSON.parse(text)
+          } catch (jsonError) {
+            console.warn('Failed to parse JSON-like text:', jsonError)
+            data = { message: text }
+          }
+        } else {
+          data = { message: text }
         }
+
         console.log('Parsed response data:', data)
       } catch (parseError) {
         console.error('Error parsing response:', parseError)
-
-        // Last resort: try to get raw text from original response or clone
-        try {
-          const text = await responseClone.text()
-          console.log('Raw response text (from clone):', text)
-          throw new Error(`Response parsing failed: ${text || 'Empty response'}`)
-        } catch (fallbackError) {
-          console.error('Failed to read response body:', fallbackError)
-          throw new Error('Unable to read server response')
-        }
+        throw new Error(`Failed to parse server response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`)
       }
 
       if (!response.ok) {
