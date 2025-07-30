@@ -118,7 +118,13 @@ class ApiClient {
         throw new Error('Network error: Unable to connect to server. Please check your internet connection and try again.')
       }
 
-      throw error
+      // Handle specific error types
+      if (error instanceof Error) {
+        throw error
+      }
+
+      // Handle non-Error objects
+      throw new Error(typeof error === 'string' ? error : 'An unexpected error occurred')
     }
   }
 
