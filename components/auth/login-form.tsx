@@ -38,10 +38,18 @@ export function LoginForm() {
 
   const loginMutation = useMutation({
     mutationFn: async (data: LoginFormData) => {
-      const response = await apiClient.login(data.email, data.password)
-      return response.data
+      console.log("Attempting login with:", { email: data.email })
+      try {
+        const response = await apiClient.login(data.email, data.password)
+        console.log("Login response:", response)
+        return response.data
+      } catch (error) {
+        console.error("Login mutation error:", error)
+        throw error
+      }
     },
     onSuccess: (data) => {
+      console.log("Login successful:", data)
       login(data.user, data.token)
       toast({
         title: "Success",
@@ -50,9 +58,10 @@ export function LoginForm() {
       router.push("/dashboard")
     },
     onError: (error: any) => {
+      console.error("Login error in mutation:", error)
       toast({
-        title: "Error",
-        description: error.message || "Login failed. Please try again.",
+        title: "Login Failed",
+        description: error.message || "Unable to sign in. Please check your credentials and try again.",
         variant: "destructive",
       })
     },
