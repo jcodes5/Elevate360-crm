@@ -111,15 +111,6 @@ export default function ContactsPage() {
   }
 
   return (
-    <MainLayout
-      breadcrumbs={[{ label: "CRM", href: "/crm" }, { label: "Contacts" }]}
-      actions={
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Contact
-        </Button>
-      }
-    >
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -318,6 +309,5 @@ export default function ContactsPage() {
           </CardContent>
         </Card>
       </div>
-    </MainLayout>
   )
 }
