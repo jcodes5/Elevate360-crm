@@ -3,7 +3,6 @@
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/hooks/use-auth"
-import { redirect } from "next/navigation"
 
 export default function HomePage() {
   const { isAuthenticated, isLoading } = useAuth()
@@ -14,7 +13,7 @@ export default function HomePage() {
       if (isAuthenticated) {
         router.push("/dashboard")
       } else {
-        redirect("/landing")
+        router.push("/landing")
       }
     }
   }, [isAuthenticated, isLoading, router])
