@@ -11,15 +11,17 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, needsOnboarding } = useAuth()
   const router = useRouter()
 
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!isAuthenticated) {
       router.push('/auth/login')
+    } else if (needsOnboarding) {
+      router.push('/onboarding')
     }
-  }, [isAuthenticated, router])
+  }, [isAuthenticated, needsOnboarding, router])
 
   if (!isAuthenticated) {
     return null // or a loading spinner
