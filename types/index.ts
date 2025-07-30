@@ -11,6 +11,8 @@ export interface User {
   phone?: string
   isActive: boolean
   lastLogin?: Date
+  isOnboardingCompleted?: boolean
+  onboardingStep?: number
   createdAt: Date
   updatedAt: Date
 }
