@@ -53,6 +53,9 @@ class ApiClient {
         throw new Error('API client can only be used in browser environment')
       }
 
+      // Check network connectivity
+      await this.checkNetworkConnectivity()
+
       // Check if fetch is available
       if (typeof fetch === 'undefined') {
         throw new Error('Fetch is not available in this environment')
