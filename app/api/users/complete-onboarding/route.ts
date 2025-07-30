@@ -21,11 +21,14 @@ export async function POST(request: NextRequest) {
     let decoded
     try {
       decoded = AuthService.verifyToken(token)
+      console.log("Token decoded successfully for user:", decoded.userId)
     } catch (error) {
+      console.log("Token verification failed:", error)
       return NextResponse.json({ success: false, message: "Invalid token" }, { status: 401 })
     }
 
     // Update user onboarding status
+    console.log("Updating user onboarding status...")
     const updatedUser = await db.updateById<User>("users", decoded.userId, {
       isOnboardingCompleted: true,
       phone: onboardingData.phone,
@@ -33,21 +36,24 @@ export async function POST(request: NextRequest) {
     })
 
     if (!updatedUser) {
+      console.log("User not found:", decoded.userId)
       return NextResponse.json({ success: false, message: "User not found" }, { status: 404 })
     }
 
-    // Here you could also save the onboarding data to a separate collection
-    // or update organization settings based on the preferences
-    
+    console.log("User updated successfully:", updatedUser.id)
+
     console.log("Onboarding completed for user:", decoded.userId, "with data:", onboardingData)
 
-    return NextResponse.json({
+    const response = {
       success: true,
       message: "Onboarding completed successfully",
       data: {
         user: { ...updatedUser, password: undefined } // Remove password from response
       }
-    })
+    }
+
+    console.log("Sending response:", response)
+    return NextResponse.json(response)
 
   } catch (error) {
     console.error("Onboarding completion error:", error)
