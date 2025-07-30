@@ -1,19 +1,34 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { AuthService } from "@/lib/auth"
 import { db } from "@/lib/database"
+import { createTestData } from "@/lib/seed-data"
 import type { User } from "@/types"
 
 export async function POST(request: NextRequest) {
   try {
+    console.log("Login route called")
     const { email, password } = await request.json()
+    console.log("Login attempt for email:", email)
 
     if (!email || !password) {
       return NextResponse.json({ success: false, message: "Email and password are required" }, { status: 400 })
     }
 
     // Find user by email
-    const users = await db.findMany<User>("users", { email })
-    const user = users[0]
+    let users = await db.findMany<User>("users", { email })
+    let user = users[0]
+
+    // If no user found and this is the test user, create test data
+    if (!user && email === "test@example.com") {
+      console.log("Creating test data...")
+      try {
+        const testData = await createTestData()
+        user = testData.testUser
+      } catch (error) {
+        console.error("Error creating test data:", error)
+        return NextResponse.json({ success: false, message: "Error initializing test data" }, { status: 500 })
+      }
+    }
 
     if (!user) {
       return NextResponse.json({ success: false, message: "Invalid credentials" }, { status: 401 })
