@@ -171,7 +171,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <MainLayout>
+    <>
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
         <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-4">
           {/* Header */}
@@ -475,6 +475,6 @@ export default function DashboardPage() {
       {/* Modals */}
       <CreateCampaignModal open={showCreateCampaign} onOpenChange={setShowCreateCampaign} />
       <AddContactModal open={showAddContact} onOpenChange={setShowAddContact} />
-    </MainLayout>
+    </>
   )
 }
