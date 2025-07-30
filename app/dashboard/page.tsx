@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { MainLayout } from "@/components/layout/main-layout"
+
 import { CreateCampaignModal } from "@/components/modals/create-campaign-modal"
 import { AddContactModal } from "@/components/modals/add-contact-modal"
 import {
