@@ -15,6 +15,7 @@ import { useMutation } from "@tanstack/react-query"
 import { apiClient } from "@/lib/api-client"
 import { toast } from "@/hooks/use-toast"
 import { useAuth } from "@/hooks/use-auth"
+import { testLoginAPI } from "@/lib/test-api"
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
