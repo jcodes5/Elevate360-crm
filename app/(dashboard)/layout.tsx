@@ -5,7 +5,6 @@ import { useEffect } from "react"
 import { useAuth } from "@/hooks/use-auth"
 import { AppSidebar } from "@/components/layout/app-sidebar"
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
-import { Header } from "@/components/layout/header"
 
 export default function DashboardLayout({
   children,
