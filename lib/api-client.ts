@@ -78,14 +78,14 @@ class ApiClient {
       try {
         // Check if response body has already been consumed
         if (response.bodyUsed) {
-          console.error('Response body has already been consumed!')
+          console.error(`[${requestId}] Response body has already been consumed!`)
           throw new Error('Response body has already been consumed by another process')
         }
 
         // Check if response has content before trying to parse
         const contentType = response.headers.get('content-type')
-        console.log('Response content-type:', contentType)
-        console.log('Response body used?', response.bodyUsed)
+        console.log(`[${requestId}] Response content-type:`, contentType)
+        console.log(`[${requestId}] Response body used?`, response.bodyUsed)
 
         // Read the response body
         let text: string
