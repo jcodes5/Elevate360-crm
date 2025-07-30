@@ -11,6 +11,7 @@ interface AuthContextType {
   logout: () => void
   isLoading: boolean
   isAuthenticated: boolean
+  needsOnboarding: boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
