@@ -75,13 +75,31 @@ class ApiClient {
       let data: any
 
       try {
+        // Check if response body has already been consumed
+        if (response.bodyUsed) {
+          console.error('Response body has already been consumed!')
+          throw new Error('Response body has already been consumed by another process')
+        }
+
         // Check if response has content before trying to parse
         const contentType = response.headers.get('content-type')
         console.log('Response content-type:', contentType)
+        console.log('Response body used?', response.bodyUsed)
 
-        // Always read as text first to avoid body stream issues
-        const text = await response.text()
-        console.log('Response text:', text)
+        // Read the response body
+        let text: string
+        try {
+          text = await response.text()
+          console.log('Response text:', text)
+        } catch (textError) {
+          console.error('Failed to read response text:', textError)
+
+          // If text() fails, try to handle the error gracefully
+          if (textError instanceof Error && textError.message.includes('body stream already read')) {
+            throw new Error('Response body was consumed by another process before API client could read it')
+          }
+          throw new Error(`Failed to read response: ${textError instanceof Error ? textError.message : 'Unknown error'}`)
+        }
 
         if (!text) {
           data = {}
