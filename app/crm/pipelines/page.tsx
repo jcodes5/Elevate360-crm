@@ -1,10 +1,19 @@
 "use client"
 
 import { useState } from "react"
-import { Plus, MoreHorizontal, Edit, Trash2, Eye, DollarSign } from "lucide-react"
+import { Plus, Settings, Edit, Trash2, GripVertical, CheckCircle, Target, TrendingUp, BarChart3 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,405 +21,592 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { MainLayout } from "@/components/layout/main-layout"
-import { formatCurrency } from "@/lib/utils"
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Switch } from "@/components/ui/switch"
+import { Slider } from "@/components/ui/slider"
+import type { Pipeline, PipelineStage } from "@/types"
+import { useToast } from "@/hooks/use-toast"
 
-// Mock data
-const mockPipelines = [
+// Mock pipeline data
+const mockPipelines: Pipeline[] = [
   {
-    id: "pipeline-1",
+    id: "default",
     name: "Sales Pipeline",
-    isDefault: true,
     stages: [
       {
-        id: "stage-1",
-        name: "Lead",
+        id: "1",
+        name: "Prospecting",
         order: 1,
-        color: "#EF4444",
-        deals: [
-          {
-            id: "deal-1",
-            title: "Website Redesign - ABC Corp",
-            value: 2500000,
-            contact: "John Doe",
-            probability: 25,
-          },
-          {
-            id: "deal-2",
-            title: "Mobile App Development",
-            value: 4200000,
-            contact: "Jane Smith",
-            probability: 30,
-          },
-        ],
+        color: "#3b82f6",
+        probability: 10,
+        deals: []
       },
       {
-        id: "stage-2",
-        name: "Qualified",
+        id: "2",
+        name: "Qualification", 
         order: 2,
-        color: "#F59E0B",
-        deals: [
-          {
-            id: "deal-3",
-            title: "E-commerce Platform",
-            value: 3800000,
-            contact: "Mike Johnson",
-            probability: 50,
-          },
-        ],
+        color: "#8b5cf6",
+        probability: 25,
+        deals: []
       },
       {
-        id: "stage-3",
+        id: "3",
         name: "Proposal",
         order: 3,
-        color: "#3B82F6",
-        deals: [
-          {
-            id: "deal-4",
-            title: "Digital Marketing Package",
-            value: 1800000,
-            contact: "Sarah Wilson",
-            probability: 75,
-          },
-          {
-            id: "deal-5",
-            title: "Brand Identity Design",
-            value: 950000,
-            contact: "David Brown",
-            probability: 60,
-          },
-        ],
+        color: "#f59e0b",
+        probability: 50,
+        deals: []
       },
       {
-        id: "stage-4",
+        id: "4",
         name: "Negotiation",
         order: 4,
-        color: "#8B5CF6",
-        deals: [
-          {
-            id: "deal-6",
-            title: "CRM Implementation",
-            value: 5200000,
-            contact: "Lisa Davis",
-            probability: 85,
-          },
-        ],
+        color: "#ef4444", 
+        probability: 75,
+        deals: []
       },
       {
-        id: "stage-5",
+        id: "5",
         name: "Closed Won",
         order: 5,
-        color: "#10B981",
-        deals: [
-          {
-            id: "deal-7",
-            title: "Social Media Management",
-            value: 1200000,
-            contact: "Tom Wilson",
-            probability: 100,
-          },
-        ],
-      },
+        color: "#10b981",
+        probability: 100,
+        deals: []
+      }
     ],
+    organizationId: "org-1",
+    isDefault: true,
+    createdAt: new Date("2024-01-01"),
+    updatedAt: new Date("2024-01-25"),
   },
   {
-    id: "pipeline-2",
-    name: "Consulting Pipeline",
-    isDefault: false,
+    id: "enterprise",
+    name: "Enterprise Sales",
     stages: [
       {
-        id: "stage-6",
-        name: "Initial Contact",
+        id: "e1",
+        name: "Lead Generation",
         order: 1,
-        color: "#EF4444",
-        deals: [],
+        color: "#6366f1",
+        probability: 5,
+        deals: []
       },
       {
-        id: "stage-7",
-        name: "Discovery Call",
+        id: "e2", 
+        name: "Initial Contact",
         order: 2,
-        color: "#F59E0B",
-        deals: [],
+        color: "#8b5cf6",
+        probability: 15,
+        deals: []
       },
       {
-        id: "stage-8",
-        name: "Proposal Sent",
+        id: "e3",
+        name: "Needs Assessment",
         order: 3,
-        color: "#3B82F6",
-        deals: [],
+        color: "#06b6d4",
+        probability: 30,
+        deals: []
       },
       {
-        id: "stage-9",
-        name: "Contract Signed",
+        id: "e4",
+        name: "Technical Evaluation",
         order: 4,
-        color: "#10B981",
-        deals: [],
+        color: "#f59e0b",
+        probability: 50,
+        deals: []
       },
+      {
+        id: "e5",
+        name: "Procurement",
+        order: 5,
+        color: "#ef4444",
+        probability: 75,
+        deals: []
+      },
+      {
+        id: "e6",
+        name: "Contract Signed",
+        order: 6,
+        color: "#10b981",
+        probability: 100,
+        deals: []
+      }
     ],
-  },
+    organizationId: "org-1",
+    isDefault: false,
+    createdAt: new Date("2024-01-10"),
+    updatedAt: new Date("2024-01-20"),
+  }
 ]
 
 export default function PipelinesPage() {
   const [pipelines, setPipelines] = useState(mockPipelines)
-  const [activePipeline, setActivePipeline] = useState(mockPipelines[0])
+  const [selectedPipeline, setSelectedPipeline] = useState<Pipeline>(pipelines[0])
+  const [showCreatePipeline, setShowCreatePipeline] = useState(false)
+  const [showCreateStage, setShowCreateStage] = useState(false)
+  const [showEditStage, setShowEditStage] = useState(false)
+  const [editingStage, setEditingStage] = useState<PipelineStage | null>(null)
+  const [newPipelineName, setNewPipelineName] = useState("")
+  const [newStage, setNewStage] = useState({
+    name: "",
+    color: "#3b82f6",
+    probability: 50
+  })
+  const { toast } = useToast()
 
-  const handleDragEnd = (result: any) => {
-    if (!result.destination) return
+  const addPipeline = () => {
+    if (!newPipelineName.trim()) return
+    
+    const newPipeline: Pipeline = {
+      id: Date.now().toString(),
+      name: newPipelineName,
+      stages: [
+        {
+          id: "new-1",
+          name: "New Lead",
+          order: 1,
+          color: "#3b82f6",
+          probability: 10,
+          deals: []
+        },
+        {
+          id: "new-2",
+          name: "Qualified",
+          order: 2,
+          color: "#10b981",
+          probability: 100,
+          deals: []
+        }
+      ],
+      organizationId: "org-1",
+      isDefault: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+    
+    setPipelines([...pipelines, newPipeline])
+    setNewPipelineName("")
+    setShowCreatePipeline(false)
+    toast({
+      title: "Pipeline Created",
+      description: `${newPipelineName} pipeline has been created successfully.`
+    })
+  }
 
-    const { source, destination, draggableId } = result
+  const addStage = () => {
+    if (!newStage.name.trim()) return
+    
+    const newStageObj: PipelineStage = {
+      id: Date.now().toString(),
+      name: newStage.name,
+      order: selectedPipeline.stages.length + 1,
+      color: newStage.color,
+      probability: newStage.probability,
+      deals: []
+    }
+    
+    const updatedPipeline = {
+      ...selectedPipeline,
+      stages: [...selectedPipeline.stages, newStageObj]
+    }
+    
+    setSelectedPipeline(updatedPipeline)
+    setPipelines(pipelines.map(p => p.id === selectedPipeline.id ? updatedPipeline : p))
+    setNewStage({ name: "", color: "#3b82f6", probability: 50 })
+    setShowCreateStage(false)
+    toast({
+      title: "Stage Added",
+      description: `${newStage.name} stage has been added to the pipeline.`
+    })
+  }
 
-    // If dropped in the same position, do nothing
-    if (source.droppableId === destination.droppableId && source.index === destination.index) {
+  const deleteStage = (stageId: string) => {
+    const updatedPipeline = {
+      ...selectedPipeline,
+      stages: selectedPipeline.stages.filter(s => s.id !== stageId)
+    }
+    
+    setSelectedPipeline(updatedPipeline)
+    setPipelines(pipelines.map(p => p.id === selectedPipeline.id ? updatedPipeline : p))
+    toast({
+      title: "Stage Deleted",
+      description: "Stage has been removed from the pipeline."
+    })
+  }
+
+  const deletePipeline = (pipelineId: string) => {
+    if (pipelines.find(p => p.id === pipelineId)?.isDefault) {
+      toast({
+        title: "Cannot Delete",
+        description: "Default pipeline cannot be deleted.",
+        variant: "destructive"
+      })
       return
     }
-
-    // Find the deal being moved
-    const sourceStage = activePipeline.stages.find((stage) => stage.id === source.droppableId)
-    const destStage = activePipeline.stages.find((stage) => stage.id === destination.droppableId)
-
-    if (!sourceStage || !destStage) return
-
-    const deal = sourceStage.deals.find((d) => d.id === draggableId)
-    if (!deal) return
-
-    // Update the pipeline
-    const updatedPipeline = {
-      ...activePipeline,
-      stages: activePipeline.stages.map((stage) => {
-        if (stage.id === source.droppableId) {
-          // Remove deal from source stage
-          return {
-            ...stage,
-            deals: stage.deals.filter((d) => d.id !== draggableId),
-          }
-        }
-        if (stage.id === destination.droppableId) {
-          // Add deal to destination stage
-          const newDeals = [...stage.deals]
-          newDeals.splice(destination.index, 0, deal)
-          return {
-            ...stage,
-            deals: newDeals,
-          }
-        }
-        return stage
-      }),
+    
+    setPipelines(pipelines.filter(p => p.id !== pipelineId))
+    if (selectedPipeline.id === pipelineId) {
+      setSelectedPipeline(pipelines[0])
     }
-
-    setActivePipeline(updatedPipeline)
-
-    // Update pipelines array
-    setPipelines((prev) => prev.map((pipeline) => (pipeline.id === activePipeline.id ? updatedPipeline : pipeline)))
+    toast({
+      title: "Pipeline Deleted",
+      description: "Pipeline has been deleted successfully."
+    })
   }
 
-  const getTotalValue = (stage: any) => {
-    return stage.deals.reduce((sum: number, deal: any) => sum + deal.value, 0)
-  }
-
-  const getWeightedValue = (stage: any) => {
-    return stage.deals.reduce((sum: number, deal: any) => sum + (deal.value * deal.probability) / 100, 0)
-  }
+  const colorOptions = [
+    "#3b82f6", "#8b5cf6", "#06b6d4", "#10b981", "#f59e0b", 
+    "#ef4444", "#ec4899", "#6366f1", "#84cc16", "#f97316"
+  ]
 
   return (
-    <MainLayout
-      breadcrumbs={[{ label: "CRM", href: "/crm" }, { label: "Pipelines" }]}
-      actions={
-        <div className="flex gap-2">
-          <Button variant="outline">
-            <Eye className="mr-2 h-4 w-4" />
-            Pipeline Analytics
-          </Button>
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Create Pipeline
-          </Button>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Pipelines</h1>
+          <p className="text-muted-foreground">Configure your sales process and pipeline stages</p>
         </div>
-      }
-    >
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Sales Pipelines</h1>
-            <p className="text-muted-foreground">Manage your sales process and track deal progression</p>
-          </div>
-        </div>
+        <Button onClick={() => setShowCreatePipeline(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Create Pipeline
+        </Button>
+      </div>
 
-        {/* Pipeline Selector */}
-        <div className="flex items-center space-x-4">
-          {pipelines.map((pipeline) => (
-            <Button
-              key={pipeline.id}
-              variant={activePipeline.id === pipeline.id ? "default" : "outline"}
-              onClick={() => setActivePipeline(pipeline)}
-              className="flex items-center space-x-2"
-            >
-              <span>{pipeline.name}</span>
-              {pipeline.isDefault && <Badge variant="secondary">Default</Badge>}
-            </Button>
-          ))}
-        </div>
+      {/* Pipeline Stats */}
+      <div className="grid gap-6 md:grid-cols-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center">
+              <Target className="mr-2 h-4 w-4" />
+              Total Pipelines
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{pipelines.length}</div>
+            <p className="text-xs text-muted-foreground">
+              {pipelines.filter(p => p.isDefault).length} default
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center">
+              <BarChart3 className="mr-2 h-4 w-4" />
+              Average Stages
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {Math.round(pipelines.reduce((sum, p) => sum + p.stages.length, 0) / pipelines.length)}
+            </div>
+            <p className="text-xs text-muted-foreground">Per pipeline</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center">
+              <TrendingUp className="mr-2 h-4 w-4" />
+              Active Stages
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{selectedPipeline.stages.length}</div>
+            <p className="text-xs text-muted-foreground">In current pipeline</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center">
+              <CheckCircle className="mr-2 h-4 w-4" />
+              Conversion Rate
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {selectedPipeline.stages.length > 0 
+                ? Math.round(selectedPipeline.stages[selectedPipeline.stages.length - 1].probability)
+                : 0}%
+            </div>
+            <p className="text-xs text-muted-foreground">Final stage probability</p>
+          </CardContent>
+        </Card>
+      </div>
 
-        {/* Pipeline Stats */}
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Total Deals</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {activePipeline.stages.reduce((sum, stage) => sum + stage.deals.length, 0)}
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Pipeline Value</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {formatCurrency(activePipeline.stages.reduce((sum, stage) => sum + getTotalValue(stage), 0))}
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Weighted Value</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {formatCurrency(activePipeline.stages.reduce((sum, stage) => sum + getWeightedValue(stage), 0))}
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Avg Deal Size</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {formatCurrency(
-                  activePipeline.stages.reduce((sum, stage) => sum + getTotalValue(stage), 0) /
-                    Math.max(
-                      activePipeline.stages.reduce((sum, stage) => sum + stage.deals.length, 0),
-                      1,
-                    ),
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Pipeline Board */}
-        <DragDropContext onDragEnd={handleDragEnd}>
-          <div className="flex space-x-4 overflow-x-auto pb-4">
-            {activePipeline.stages.map((stage) => (
-              <div key={stage.id} className="flex-shrink-0 w-80">
-                <Card>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: stage.color }} />
-                        <CardTitle className="text-sm font-medium">{stage.name}</CardTitle>
-                        <Badge variant="secondary">{stage.deals.length}</Badge>
-                      </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          <DropdownMenuItem>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit Stage
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Plus className="mr-2 h-4 w-4" />
-                            Add Deal
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-red-600">
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete Stage
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                    <div className="text-xs text-muted-foreground">Total: {formatCurrency(getTotalValue(stage))}</div>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <Droppable droppableId={stage.id}>
-                      {(provided, snapshot) => (
-                        <div
-                          ref={provided.innerRef}
-                          {...provided.droppableProps}
-                          className={`space-y-3 min-h-[200px] p-2 rounded-lg transition-colors ${
-                            snapshot.isDraggingOver ? "bg-muted/50" : ""
-                          }`}
-                        >
-                          {stage.deals.map((deal, index) => (
-                            <Draggable key={deal.id} draggableId={deal.id} index={index}>
-                              {(provided, snapshot) => (
-                                <div
-                                  ref={provided.innerRef}
-                                  {...provided.draggableProps}
-                                  {...provided.dragHandleProps}
-                                  className={`p-3 bg-background border rounded-lg shadow-sm cursor-move transition-shadow ${
-                                    snapshot.isDragging ? "shadow-lg" : "hover:shadow-md"
-                                  }`}
-                                >
-                                  <div className="space-y-2">
-                                    <h4 className="font-medium text-sm line-clamp-2">{deal.title}</h4>
-                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                                      <span>{deal.contact}</span>
-                                      <Badge variant="outline">{deal.probability}%</Badge>
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                      <div className="flex items-center space-x-1 text-sm font-medium">
-                                        <DollarSign className="h-3 w-3" />
-                                        <span>{formatCurrency(deal.value)}</span>
-                                      </div>
-                                      <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                                            <MoreHorizontal className="h-3 w-3" />
-                                          </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent>
-                                          <DropdownMenuItem>
-                                            <Eye className="mr-2 h-4 w-4" />
-                                            View Deal
-                                          </DropdownMenuItem>
-                                          <DropdownMenuItem>
-                                            <Edit className="mr-2 h-4 w-4" />
-                                            Edit Deal
-                                          </DropdownMenuItem>
-                                          <DropdownMenuSeparator />
-                                          <DropdownMenuItem className="text-red-600">
-                                            <Trash2 className="mr-2 h-4 w-4" />
-                                            Delete Deal
-                                          </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                      </DropdownMenu>
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-                            </Draggable>
-                          ))}
-                          {provided.placeholder}
-                        </div>
-                      )}
-                    </Droppable>
-                  </CardContent>
-                </Card>
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Pipeline List */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Your Pipelines</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {pipelines.map((pipeline) => (
+              <div
+                key={pipeline.id}
+                className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${
+                  selectedPipeline.id === pipeline.id 
+                    ? "bg-blue-50 border-blue-200" 
+                    : "hover:bg-gray-50"
+                }`}
+                onClick={() => setSelectedPipeline(pipeline)}
+              >
+                <div>
+                  <div className="font-medium">{pipeline.name}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {pipeline.stages.length} stages
+                    {pipeline.isDefault && (
+                      <Badge variant="secondary" className="ml-2">Default</Badge>
+                    )}
+                  </div>
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm">
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem>
+                      <Edit className="mr-2 h-4 w-4" />
+                      Edit Pipeline
+                    </DropdownMenuItem>
+                    <DropdownMenuItem>
+                      <Target className="mr-2 h-4 w-4" />
+                      Set as Default
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      className="text-red-600"
+                      onClick={() => deletePipeline(pipeline.id)}
+                      disabled={pipeline.isDefault}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete Pipeline
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             ))}
-          </div>
-        </DragDropContext>
+          </CardContent>
+        </Card>
+
+        {/* Pipeline Stages */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>{selectedPipeline.name}</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Manage stages and conversion probabilities
+                </p>
+              </div>
+              <Button onClick={() => setShowCreateStage(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Stage
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {selectedPipeline.stages.map((stage, index) => (
+                <div
+                  key={stage.id}
+                  className="flex items-center space-x-4 p-4 border rounded-lg"
+                >
+                  <div className="flex items-center space-x-2">
+                    <GripVertical className="h-4 w-4 text-gray-400 cursor-move" />
+                    <div 
+                      className="w-4 h-4 rounded-full"
+                      style={{ backgroundColor: stage.color }}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-medium">{stage.name}</div>
+                    <div className="text-sm text-muted-foreground">
+                      Position {stage.order} • {stage.probability}% conversion
+                    </div>
+                  </div>
+                  <div className="w-24">
+                    <Progress value={stage.probability} className="h-2" />
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm">
+                        <Settings className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem 
+                        onClick={() => {
+                          setEditingStage(stage)
+                          setShowEditStage(true)
+                        }}
+                      >
+                        <Edit className="mr-2 h-4 w-4" />
+                        Edit Stage
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem 
+                        className="text-red-600"
+                        onClick={() => deleteStage(stage.id)}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete Stage
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
-    </MainLayout>
+
+      {/* Create Pipeline Modal */}
+      <Dialog open={showCreatePipeline} onOpenChange={setShowCreatePipeline}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Pipeline</DialogTitle>
+            <DialogDescription>
+              Create a new sales pipeline to organize your deals.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="pipelineName">Pipeline Name</Label>
+              <Input
+                id="pipelineName"
+                value={newPipelineName}
+                onChange={(e) => setNewPipelineName(e.target.value)}
+                placeholder="Enter pipeline name"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreatePipeline(false)}>
+              Cancel
+            </Button>
+            <Button onClick={addPipeline}>Create Pipeline</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Stage Modal */}
+      <Dialog open={showCreateStage} onOpenChange={setShowCreateStage}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Stage</DialogTitle>
+            <DialogDescription>
+              Add a new stage to your pipeline.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="stageName">Stage Name</Label>
+              <Input
+                id="stageName"
+                value={newStage.name}
+                onChange={(e) => setNewStage({...newStage, name: e.target.value})}
+                placeholder="Enter stage name"
+              />
+            </div>
+            <div>
+              <Label>Stage Color</Label>
+              <div className="flex space-x-2 mt-2">
+                {colorOptions.map((color) => (
+                  <button
+                    key={color}
+                    className={`w-8 h-8 rounded-full border-2 ${
+                      newStage.color === color ? "border-gray-800" : "border-gray-300"
+                    }`}
+                    style={{ backgroundColor: color }}
+                    onClick={() => setNewStage({...newStage, color})}
+                  />
+                ))}
+              </div>
+            </div>
+            <div>
+              <Label>Conversion Probability: {newStage.probability}%</Label>
+              <Slider
+                value={[newStage.probability]}
+                onValueChange={([value]) => setNewStage({...newStage, probability: value})}
+                max={100}
+                step={5}
+                className="mt-2"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateStage(false)}>
+              Cancel
+            </Button>
+            <Button onClick={addStage}>Add Stage</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Stage Modal */}
+      <Dialog open={showEditStage} onOpenChange={setShowEditStage}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Stage</DialogTitle>
+            <DialogDescription>
+              Modify stage properties and settings.
+            </DialogDescription>
+          </DialogHeader>
+          {editingStage && (
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="editStageName">Stage Name</Label>
+                <Input
+                  id="editStageName"
+                  defaultValue={editingStage.name}
+                  placeholder="Enter stage name"
+                />
+              </div>
+              <div>
+                <Label>Stage Color</Label>
+                <div className="flex space-x-2 mt-2">
+                  {colorOptions.map((color) => (
+                    <button
+                      key={color}
+                      className={`w-8 h-8 rounded-full border-2 ${
+                        editingStage.color === color ? "border-gray-800" : "border-gray-300"
+                      }`}
+                      style={{ backgroundColor: color }}
+                    />
+                  ))}
+                </div>
+              </div>
+              <div>
+                <Label>Conversion Probability: {editingStage.probability}%</Label>
+                <Slider
+                  defaultValue={[editingStage.probability]}
+                  max={100}
+                  step={5}
+                  className="mt-2"
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditStage(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => {
+              toast({
+                title: "Stage Updated",
+                description: "Stage has been updated successfully."
+              })
+              setShowEditStage(false)
+            }}>
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   )
 }
