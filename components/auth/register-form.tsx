@@ -69,9 +69,9 @@ export function RegisterForm() {
       login(data.user, data.token)
       toast({
         title: "Success",
-        description: "Account created successfully! Welcome to Elevate360 CRM.",
+        description: "Account created successfully! Let's get you set up.",
       })
-      router.push("/dashboard")
+      router.push("/onboarding")
     },
     onError: (error: any) => {
       toast({
