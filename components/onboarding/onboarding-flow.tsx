@@ -163,11 +163,15 @@ export function OnboardingFlow() {
   const completeOnboarding = async () => {
     setIsLoading(true)
     try {
+      console.log("Starting onboarding completion with data:", data)
+
       // Save onboarding data
-      await apiClient.post('/users/complete-onboarding', {
+      const response = await apiClient.post('/users/complete-onboarding', {
         onboardingData: data,
         isOnboardingCompleted: true
       })
+
+      console.log("Onboarding completion response:", response)
 
       toast({
         title: "Welcome aboard! 🎉",
@@ -179,9 +183,15 @@ export function OnboardingFlow() {
         router.push("/dashboard")
       }, 2000)
     } catch (error) {
+      console.error("Onboarding completion error:", error)
+
+      const errorMessage = error instanceof Error
+        ? error.message
+        : "Failed to complete onboarding. Please try again."
+
       toast({
         title: "Error",
-        description: "Failed to complete onboarding. Please try again.",
+        description: errorMessage,
         variant: "destructive"
       })
     } finally {
