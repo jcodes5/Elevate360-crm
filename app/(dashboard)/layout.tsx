@@ -3,8 +3,9 @@
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import { useAuth } from "@/hooks/use-auth"
-import { SidebarProvider } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/layout/app-sidebar"
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
+import { Header } from "@/components/layout/header"
 
 export default function DashboardLayout({
   children,
@@ -27,12 +28,13 @@ export default function DashboardLayout({
 
   return (
     <SidebarProvider defaultOpen={true}>
-      <div className="flex min-h-screen">
-        <AppSidebar />
-        <main className="flex-1 bg-background">
+      <AppSidebar />
+      <SidebarInset>
+        <Header />
+        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
           {children}
-        </main>
-      </div>
+        </div>
+      </SidebarInset>
     </SidebarProvider>
   )
 }
