@@ -62,6 +62,7 @@ export async function createTestData() {
       organizationId: organization.id,
       password: hashedPassword,
       isActive: true,
+      isOnboardingCompleted: true, // Test user has completed onboarding
       createdAt: new Date(),
       updatedAt: new Date()
     })
