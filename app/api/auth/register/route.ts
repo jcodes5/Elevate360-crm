@@ -30,6 +30,8 @@ export async function POST(request: NextRequest) {
       role,
       organizationId: organizationId || "default-org",
       isActive: true,
+      isOnboardingCompleted: false,
+      onboardingStep: 0,
       createdAt: new Date(),
       updatedAt: new Date(),
     }
