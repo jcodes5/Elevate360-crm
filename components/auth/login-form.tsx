@@ -56,7 +56,13 @@ export function LoginForm() {
         title: "Success",
         description: "Welcome back! You've been logged in successfully.",
       })
-      router.push("/dashboard")
+
+      // Redirect based on onboarding status
+      if (data.user.isOnboardingCompleted === false) {
+        router.push("/onboarding")
+      } else {
+        router.push("/dashboard")
+      }
     },
     onError: (error: any) => {
       console.error("Login error in mutation:", error)
