@@ -155,7 +155,7 @@ export function LoginForm() {
                 )}
               </motion.div>
 
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="space-y-3">
                 <Button
                   type="submit"
                   className="w-full h-12 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
@@ -172,6 +172,19 @@ export function LoginForm() {
                       Sign In
                     </div>
                   )}
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={async () => {
+                    console.log("Testing API directly...")
+                    const result = await testLoginAPI()
+                    console.log("Test result:", result)
+                  }}
+                >
+                  Test API (Debug)
                 </Button>
               </motion.div>
             </form>
