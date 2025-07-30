@@ -91,9 +91,9 @@ class ApiClient {
         let text: string
         try {
           text = await response.text()
-          console.log('Response text:', text)
+          console.log(`[${requestId}] Response text:`, text)
         } catch (textError) {
-          console.error('Failed to read response text:', textError)
+          console.error(`[${requestId}] Failed to read response text:`, textError)
 
           // If text() fails, try to handle the error gracefully
           if (textError instanceof Error && textError.message.includes('body stream already read')) {
