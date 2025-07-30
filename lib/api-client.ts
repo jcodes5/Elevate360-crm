@@ -74,12 +74,28 @@ class ApiClient {
 
       let data: any
       try {
-        const text = await response.text()
-        console.log('Response text:', text)
-        data = text ? JSON.parse(text) : {}
+        // Check if response has content before trying to parse
+        const contentType = response.headers.get('content-type')
+        if (contentType && contentType.includes('application/json')) {
+          data = await response.json()
+        } else {
+          // For non-JSON responses or empty responses
+          const text = await response.text()
+          console.log('Response text:', text)
+          data = text ? (text.startsWith('{') || text.startsWith('[') ? JSON.parse(text) : { message: text }) : {}
+        }
+        console.log('Parsed response data:', data)
       } catch (parseError) {
-        console.error('Error parsing response JSON:', parseError)
-        throw new Error('Invalid JSON response from server')
+        console.error('Error parsing response:', parseError)
+        // If JSON parsing fails, try to get the raw text for debugging
+        try {
+          const clonedResponse = response.clone()
+          const text = await clonedResponse.text()
+          console.log('Raw response text:', text)
+          throw new Error(`Invalid response format: ${text}`)
+        } catch (cloneError) {
+          throw new Error('Invalid response from server and unable to read response body')
+        }
       }
 
       if (!response.ok) {
