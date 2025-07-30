@@ -5,12 +5,16 @@ import type { User } from "@/types"
 
 export async function POST(request: NextRequest) {
   try {
+    console.log("Onboarding API called")
     const { onboardingData, isOnboardingCompleted } = await request.json()
-    
+    console.log("Received onboarding data:", { onboardingData, isOnboardingCompleted })
+
     // Get user from token
     const token = request.headers.get("authorization")?.replace("Bearer ", "")
-    
+    console.log("Token received:", token ? "Yes" : "No")
+
     if (!token) {
+      console.log("No authorization token provided")
       return NextResponse.json({ success: false, message: "No authorization token" }, { status: 401 })
     }
 
