@@ -62,7 +62,7 @@ class ApiClient {
         throw new Error('Fetch is not available in this environment')
       }
 
-      console.log('Making fetch request to:', url, 'with headers:', headers)
+      console.log(`[${requestId}] Making fetch request to:`, url, 'with headers:', headers)
 
       const response = await fetch(url, {
         ...options,
@@ -71,7 +71,7 @@ class ApiClient {
         credentials: 'same-origin',
       })
 
-      console.log('Response status:', response.status, 'statusText:', response.statusText)
+      console.log(`[${requestId}] Response status:`, response.status, 'statusText:', response.statusText)
 
       let data: any
 
