@@ -30,6 +30,8 @@ class ApiClient {
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
     const url = `${this.baseUrl}${endpoint}`
 
+    console.log("API Request:", { url, method: options.method || 'GET', baseUrl: this.baseUrl, endpoint })
+
     const headers: HeadersInit = {
       "Content-Type": "application/json",
       ...options.headers,
@@ -40,20 +42,57 @@ class ApiClient {
     }
 
     try {
+      // Validate we're in browser environment
+      if (typeof window === 'undefined') {
+        throw new Error('API client can only be used in browser environment')
+      }
+
+      // Check if fetch is available
+      if (typeof fetch === 'undefined') {
+        throw new Error('Fetch is not available in this environment')
+      }
+
+      console.log('Making fetch request to:', url, 'with headers:', headers)
+
       const response = await fetch(url, {
         ...options,
         headers,
+        // Add credentials to handle cookies if needed
+        credentials: 'same-origin',
       })
 
-      const data = await response.json()
+      console.log('Response status:', response.status, 'statusText:', response.statusText)
 
-      if (!response.ok) {
-        throw new Error(data.message || "API request failed")
+      let data: any
+      try {
+        const text = await response.text()
+        console.log('Response text:', text)
+        data = text ? JSON.parse(text) : {}
+      } catch (parseError) {
+        console.error('Error parsing response JSON:', parseError)
+        throw new Error('Invalid JSON response from server')
       }
 
+      if (!response.ok) {
+        const errorMessage = data.message || `HTTP ${response.status}: ${response.statusText}`
+        console.error('API request failed with status:', response.status, 'data:', data)
+        throw new Error(errorMessage)
+      }
+
+      console.log('API request successful:', data)
       return data
     } catch (error) {
-      console.error("API request failed:", error)
+      console.error('API request failed:', {
+        url,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      })
+
+      // Provide more specific error messages
+      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+        throw new Error('Network error: Unable to connect to server. Please check your internet connection and try again.')
+      }
+
       throw error
     }
   }
