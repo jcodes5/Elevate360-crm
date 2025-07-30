@@ -13,6 +13,12 @@ class ApiClient {
     }
   }
 
+  private async checkNetworkConnectivity(): Promise<void> {
+    if (typeof navigator !== 'undefined' && 'onLine' in navigator && !navigator.onLine) {
+      throw new Error('No internet connection. Please check your network and try again.')
+    }
+  }
+
   setToken(token: string) {
     this.token = token
     if (typeof window !== "undefined") {
