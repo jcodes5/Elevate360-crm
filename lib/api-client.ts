@@ -35,8 +35,9 @@ class ApiClient {
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
     const url = `${this.baseUrl}${endpoint}`
+    const requestId = Math.random().toString(36).substr(2, 9)
 
-    console.log("API Request:", { url, method: options.method || 'GET', baseUrl: this.baseUrl, endpoint })
+    console.log(`[${requestId}] API Request:`, { url, method: options.method || 'GET', baseUrl: this.baseUrl, endpoint })
 
     const headers: HeadersInit = {
       "Content-Type": "application/json",
