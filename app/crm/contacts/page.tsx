@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { MainLayout } from "@/components/layout/main-layout"
+
 import type { Contact } from "@/types"
 
 // Mock data
