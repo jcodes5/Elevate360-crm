@@ -30,8 +30,7 @@ export default function DashboardLayout({
     <SidebarProvider defaultOpen={true}>
       <AppSidebar />
       <SidebarInset>
-        <Header />
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+        <div className="flex flex-1 flex-col gap-4 p-4">
           {children}
         </div>
       </SidebarInset>
