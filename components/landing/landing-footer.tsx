@@ -88,7 +88,7 @@ export function LandingFooter() {
                 </div>
                 <div className="flex items-center space-x-3">
                   <MapPin className="w-5 h-5 text-primary" />
-                  <span className="text-muted-foreground">Lagos, Nigeria</span>
+                  <span className="text-muted-foreground">Abuja, Nigeria</span>
                 </div>
               </div>
             </motion.div>
@@ -218,7 +218,7 @@ export function LandingFooter() {
         >
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
             <div className="text-muted-foreground">
-              © 2024 Elevate360 CRM. All rights reserved. Made with ❤️ in Nigeria.
+              © 2025 Elevate360 CRM. Product of Levic digital Agency. <br></br> All rights reserved. Made with ❤️ in Nigeria.
             </div>
 
             {/* Social Links */}
