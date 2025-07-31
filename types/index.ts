@@ -6,10 +6,13 @@ export interface User {
   lastName: string
   role: UserRole
   organizationId: string
+  password?: string // Optional to avoid exposing in responses
   avatar?: string
   phone?: string
   isActive: boolean
   lastLogin?: Date
+  isOnboardingCompleted?: boolean
+  onboardingStep?: number
   createdAt: Date
   updatedAt: Date
 }

@@ -1,0 +1,465 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// Organization model
+model Organization {
+  id          String   @id @default(cuid())
+  name        String
+  domain      String?
+  logo        String?
+  settings    Json
+  subscription Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  users       User[]
+  contacts    Contact[]
+  deals       Deal[]
+  pipelines   Pipeline[]
+  tasks       Task[]
+  campaigns   Campaign[]
+  appointments Appointment[]
+  workflows   Workflow[]
+  clientHistory ClientHistory[]
+
+  @@map("organizations")
+}
+
+// User model
+model User {
+  id                    String   @id @default(cuid())
+  email                 String   @unique
+  firstName             String
+  lastName              String
+  role                  Role     @default(AGENT)
+  password              String
+  avatar                String?
+  phone                 String?
+  isActive              Boolean  @default(true)
+  lastLogin             DateTime?
+  isOnboardingCompleted Boolean  @default(false)
+  onboardingStep        Int      @default(0)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  // Foreign key
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Relations
+  assignedContacts Contact[]
+  assignedDeals    Deal[]
+  assignedTasks    Task[]
+  createdCampaigns Campaign[]
+  assignedAppointments Appointment[]
+  createdWorkflows Workflow[]
+  clientHistoryEntries ClientHistory[]
+
+  @@map("users")
+}
+
+// Contact model
+model Contact {
+  id           String        @id @default(cuid())
+  firstName    String
+  lastName     String
+  email        String
+  phone        String
+  whatsappNumber String?
+  company      String?
+  position     String?
+  tags         Json          // Array of strings
+  leadScore    Int           @default(0)
+  status       ContactStatus @default(LEAD)
+  source       String
+  customFields Json          // Object with custom fields
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  // Foreign keys
+  organizationId String
+  assignedTo     String?
+
+  // Relations
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assignedUser   User?        @relation(fields: [assignedTo], references: [id], onDelete: SetNull)
+  deals          Deal[]
+  tasks          Task[]
+  notes          ContactNote[]
+  activities     ContactActivity[]
+  appointments   Appointment[]
+  clientHistory  ClientHistory[]
+
+  @@map("contacts")
+}
+
+// Contact Notes
+model ContactNote {
+  id        String   @id @default(cuid())
+  content   String   @db.Text
+  createdBy String
+  createdAt DateTime @default(now())
+
+  // Foreign key
+  contactId String
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@map("contact_notes")
+}
+
+// Contact Activities
+model ContactActivity {
+  id          String       @id @default(cuid())
+  type        ActivityType
+  description String
+  metadata    Json?        // Additional activity metadata
+  createdBy   String
+  createdAt   DateTime     @default(now())
+
+  // Foreign key
+  contactId String
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@map("contact_activities")
+}
+
+// Pipeline model
+model Pipeline {
+  id        String   @id @default(cuid())
+  name      String
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Foreign key
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Relations
+  stages PipelineStage[]
+  deals  Deal[]
+
+  @@map("pipelines")
+}
+
+// Pipeline Stage model
+model PipelineStage {
+  id          String @id @default(cuid())
+  name        String
+  order       Int
+  color       String
+  probability Int    @default(0)
+
+  // Foreign key
+  pipelineId String
+  pipeline   Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+
+  // Relations
+  deals Deal[]
+
+  @@map("pipeline_stages")
+}
+
+// Deal model
+model Deal {
+  id                 String     @id @default(cuid())
+  title              String
+  value              Decimal    @db.Decimal(10, 2)
+  currency           Currency   @default(NGN)
+  probability        Int        @default(0)
+  expectedCloseDate  DateTime?
+  actualCloseDate    DateTime?
+  notes              String?    @db.Text
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  // Foreign keys
+  contactId      String
+  stageId        String
+  pipelineId     String
+  assignedTo     String
+  organizationId String
+
+  // Relations
+  contact      Contact         @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  stage        PipelineStage   @relation(fields: [stageId], references: [id], onDelete: Restrict)
+  pipeline     Pipeline        @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  assignedUser User            @relation(fields: [assignedTo], references: [id], onDelete: Restrict)
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tasks        Task[]
+  activities   DealActivity[]
+
+  @@map("deals")
+}
+
+// Deal Activities
+model DealActivity {
+  id            String           @id @default(cuid())
+  type          DealActivityType
+  description   String
+  previousStage String?
+  newStage      String?
+  createdBy     String
+  createdAt     DateTime         @default(now())
+
+  // Foreign key
+  dealId String
+  deal   Deal   @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  @@map("deal_activities")
+}
+
+// Task model
+model Task {
+  id          String       @id @default(cuid())
+  title       String
+  description String?      @db.Text
+  priority    TaskPriority @default(MEDIUM)
+  status      TaskStatus   @default(PENDING)
+  type        TaskType     @default(OTHER)
+  dueDate     DateTime
+  completedAt DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  // Foreign keys
+  assignedTo     String
+  contactId      String?
+  dealId         String?
+  organizationId String
+
+  // Relations
+  assignedUser User          @relation(fields: [assignedTo], references: [id], onDelete: Restrict)
+  contact      Contact?      @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  deal         Deal?         @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("tasks")
+}
+
+// Campaign model
+model Campaign {
+  id             String         @id @default(cuid())
+  name           String
+  type           CampaignType
+  status         CampaignStatus @default(DRAFT)
+  subject        String?
+  content        String         @db.Text
+  targetAudience Json           // Array of contact IDs
+  scheduledAt    DateTime?
+  sentAt         DateTime?
+  metrics        Json           // Campaign metrics object
+  workflowId     String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  // Foreign keys
+  organizationId String
+  createdBy      String
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  creator      User         @relation(fields: [createdBy], references: [id], onDelete: Restrict)
+  workflow     Workflow?    @relation(fields: [workflowId], references: [id], onDelete: SetNull)
+
+  @@map("campaigns")
+}
+
+// Workflow model
+model Workflow {
+  id          String         @id @default(cuid())
+  name        String
+  description String?        @db.Text
+  status      WorkflowStatus @default(DRAFT)
+  trigger     Json           // Workflow trigger configuration
+  nodes       Json           // Array of workflow nodes
+  connections Json           // Array of workflow connections
+  metrics     Json           // Workflow metrics
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  // Foreign keys
+  organizationId String
+  createdBy      String
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  creator      User         @relation(fields: [createdBy], references: [id], onDelete: Restrict)
+  campaigns    Campaign[]
+
+  @@map("workflows")
+}
+
+// Appointment model
+model Appointment {
+  id          String            @id @default(cuid())
+  title       String
+  description String?           @db.Text
+  startTime   DateTime
+  endTime     DateTime
+  status      AppointmentStatus @default(SCHEDULED)
+  type        AppointmentType   @default(MEETING)
+  meetingLink String?
+  location    String?
+  reminders   Json              // Array of reminders
+  attendees   Json              // Array of attendee IDs
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  // Foreign keys
+  contactId      String?
+  assignedTo     String
+  organizationId String
+
+  // Relations
+  contact      Contact?     @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  assignedUser User         @relation(fields: [assignedTo], references: [id], onDelete: Restrict)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("appointments")
+}
+
+// Client History model
+model ClientHistory {
+  id          String      @id @default(cuid())
+  type        HistoryType
+  title       String
+  description String      @db.Text
+  metadata    Json?       // Additional history metadata
+  createdBy   String
+  createdAt   DateTime    @default(now())
+
+  // Foreign keys
+  contactId      String
+  organizationId String
+
+  // Relations
+  contact      Contact      @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  creator      User         @relation(fields: [createdBy], references: [id], onDelete: Restrict)
+
+  @@map("client_history")
+}
+
+// Enums
+enum Role {
+  ADMIN
+  MANAGER
+  AGENT
+}
+
+enum ContactStatus {
+  LEAD
+  PROSPECT
+  CUSTOMER
+  INACTIVE
+  LOST
+}
+
+enum ActivityType {
+  EMAIL_SENT
+  CALL_MADE
+  MEETING_SCHEDULED
+  DEAL_CREATED
+  TAG_ADDED
+  NOTE_ADDED
+}
+
+enum DealActivityType {
+  CREATED
+  STAGE_CHANGED
+  VALUE_UPDATED
+  NOTE_ADDED
+  CLOSED_WON
+  CLOSED_LOST
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskType {
+  CALL
+  EMAIL
+  MEETING
+  FOLLOW_UP
+  DEMO
+  OTHER
+}
+
+enum CampaignType {
+  EMAIL
+  SMS
+  WHATSAPP
+  DRIP_SEQUENCE
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum WorkflowStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+  RESCHEDULED
+}
+
+enum AppointmentType {
+  MEETING
+  CALL
+  DEMO
+  CONSULTATION
+  FOLLOW_UP
+}
+
+enum Currency {
+  NGN
+  USD
+}
+
+enum HistoryType {
+  CONTACT_CREATED
+  CONTACT_UPDATED
+  DEAL_CREATED
+  DEAL_UPDATED
+  CAMPAIGN_SENT
+  APPOINTMENT_SCHEDULED
+  TASK_COMPLETED
+  NOTE_ADDED
+}

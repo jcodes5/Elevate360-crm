@@ -15,6 +15,7 @@ import { useMutation } from "@tanstack/react-query"
 import { apiClient } from "@/lib/api-client"
 import { toast } from "@/hooks/use-toast"
 import { useAuth } from "@/hooks/use-auth"
+import { testLoginAPI } from "@/lib/test-api"
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -38,21 +39,36 @@ export function LoginForm() {
 
   const loginMutation = useMutation({
     mutationFn: async (data: LoginFormData) => {
-      const response = await apiClient.login(data.email, data.password)
-      return response.data
+      console.log("Attempting login with:", { email: data.email })
+      try {
+        const response = await apiClient.login(data.email, data.password)
+        console.log("Login response:", response)
+        return response.data
+      } catch (error) {
+        console.error("Login mutation error:", error)
+        throw error
+      }
     },
     onSuccess: (data) => {
+      console.log("Login successful:", data)
       login(data.user, data.token)
       toast({
         title: "Success",
         description: "Welcome back! You've been logged in successfully.",
       })
-      router.push("/dashboard")
+
+      // Redirect based on onboarding status
+      if (data.user.isOnboardingCompleted === false) {
+        router.push("/onboarding")
+      } else {
+        router.push("/dashboard")
+      }
     },
     onError: (error: any) => {
+      console.error("Login error in mutation:", error)
       toast({
-        title: "Error",
-        description: error.message || "Login failed. Please try again.",
+        title: "Login Failed",
+        description: error.message || "Unable to sign in. Please check your credentials and try again.",
         variant: "destructive",
       })
     },
@@ -145,7 +161,7 @@ export function LoginForm() {
                 )}
               </motion.div>
 
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="space-y-3">
                 <Button
                   type="submit"
                   className="w-full h-12 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
@@ -162,6 +178,19 @@ export function LoginForm() {
                       Sign In
                     </div>
                   )}
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={async () => {
+                    console.log("Testing API directly...")
+                    const result = await testLoginAPI()
+                    console.log("Test result:", result)
+                  }}
+                >
+                  Test API (Debug)
                 </Button>
               </motion.div>
             </form>

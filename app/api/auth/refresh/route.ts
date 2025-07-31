@@ -1,26 +1,80 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { AuthService } from "@/lib/auth"
+import { EnhancedAuthService } from "@/lib/auth-enhanced"
 
 export async function POST(request: NextRequest) {
   try {
-    const { refreshToken } = await request.json()
+    console.log("Token refresh route called")
 
-    if (!refreshToken) {
-      return NextResponse.json({ success: false, message: "Refresh token is required" }, { status: 400 })
+    // Get refresh token from body or cookies
+    let refreshToken: string | undefined
+
+    try {
+      const body = await request.json()
+      refreshToken = body.refreshToken
+    } catch {
+      // If JSON parsing fails, try to get from cookies
     }
 
-    // Generate new access token
-    const newToken = await AuthService.refreshAccessToken(refreshToken)
+    if (!refreshToken) {
+      refreshToken = request.cookies.get('refreshToken')?.value
+    }
 
-    return NextResponse.json({
+    if (!refreshToken) {
+      return NextResponse.json(
+        { success: false, message: "No refresh token provided" },
+        { status: 401 }
+      )
+    }
+
+    // Refresh the access token
+    const result = await EnhancedAuthService.refreshAccessToken(refreshToken)
+
+    const responseData = {
       success: true,
       data: {
-        token: newToken,
-        expiresIn: 900,
+        accessToken: result.accessToken,
+        expiresIn: result.expiresIn,
+        tokenType: 'Bearer'
       },
+      message: "Token refreshed successfully"
+    }
+
+    const response = NextResponse.json(responseData)
+
+    // Update access token cookie
+    response.cookies.set('accessToken', result.accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 15 * 60, // 15 minutes
+      path: '/'
     })
+
+    // Check if we need to redirect (from middleware)
+    const redirectUrl = request.nextUrl.searchParams.get('redirect')
+    if (redirectUrl) {
+      return NextResponse.redirect(new URL(redirectUrl, request.url))
+    }
+
+    return response
+
   } catch (error) {
     console.error("Token refresh error:", error)
-    return NextResponse.json({ success: false, message: "Invalid refresh token" }, { status: 401 })
+
+    // Clear invalid cookies
+    const response = NextResponse.json(
+      { success: false, message: "Invalid refresh token" },
+      { status: 401 }
+    )
+
+    response.cookies.delete('accessToken')
+    response.cookies.delete('refreshToken')
+
+    return response
   }
+}
+
+export async function GET(request: NextRequest) {
+  // Handle GET requests from middleware redirects
+  return POST(request)
 }

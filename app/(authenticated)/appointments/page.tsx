@@ -126,19 +126,6 @@ export default function AppointmentsPage() {
   const [viewMode, setViewMode] = useState<"list" | "calendar">("list")
   const { toast } = useToast()
 
-  const filteredAppointments = appointments.filter((appointment) => {
-    const matchesSearch = appointment.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         appointment.description?.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = selectedStatus === "all" || appointment.status === selectedStatus
-    const matchesType = selectedType === "all" || appointment.type === selectedType
-    const matchesTab = activeTab === "all" || 
-                      (activeTab === "upcoming" && isUpcoming(appointment.startTime)) ||
-                      (activeTab === "today" && isToday(appointment.startTime)) ||
-                      (activeTab === "completed" && appointment.status === "completed")
-    
-    return matchesSearch && matchesStatus && matchesType && matchesTab
-  })
-
   const isToday = (date: Date) => {
     const today = new Date()
     return date.toDateString() === today.toDateString()
@@ -148,6 +135,19 @@ export default function AppointmentsPage() {
     const now = new Date()
     return date > now
   }
+
+  const filteredAppointments = appointments.filter((appointment) => {
+    const matchesSearch = appointment.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         appointment.description?.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesStatus = selectedStatus === "all" || appointment.status === selectedStatus
+    const matchesType = selectedType === "all" || appointment.type === selectedType
+    const matchesTab = activeTab === "all" ||
+                      (activeTab === "upcoming" && isUpcoming(appointment.startTime)) ||
+                      (activeTab === "today" && isToday(appointment.startTime)) ||
+                      (activeTab === "completed" && appointment.status === "completed")
+
+    return matchesSearch && matchesStatus && matchesType && matchesTab
+  })
 
   const getStatusColor = (status: string) => {
     switch (status) {

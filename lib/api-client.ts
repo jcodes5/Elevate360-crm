@@ -4,12 +4,23 @@ class ApiClient {
   private baseUrl: string
   private token: string | null = null
 
+  // Public getter for debugging
+  get currentToken(): string | null {
+    return this.token
+  }
+
   constructor(baseUrl = "/api") {
     this.baseUrl = baseUrl
 
     // Get token from localStorage if available
     if (typeof window !== "undefined") {
       this.token = localStorage.getItem("authToken")
+    }
+  }
+
+  private async checkNetworkConnectivity(): Promise<void> {
+    if (typeof navigator !== 'undefined' && 'onLine' in navigator && !navigator.onLine) {
+      throw new Error('No internet connection. Please check your network and try again.')
     }
   }
 
@@ -29,6 +40,9 @@ class ApiClient {
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
     const url = `${this.baseUrl}${endpoint}`
+    const requestId = Math.random().toString(36).substr(2, 9)
+
+    console.log(`[${requestId}] API Request:`, { url, method: options.method || 'GET', baseUrl: this.baseUrl, endpoint })
 
     const headers: HeadersInit = {
       "Content-Type": "application/json",
@@ -40,21 +54,122 @@ class ApiClient {
     }
 
     try {
+      // Validate we're in browser environment
+      if (typeof window === 'undefined') {
+        throw new Error('API client can only be used in browser environment')
+      }
+
+      // Check network connectivity
+      await this.checkNetworkConnectivity()
+
+      // Check if fetch is available
+      if (typeof fetch === 'undefined') {
+        throw new Error('Fetch is not available in this environment')
+      }
+
+      console.log(`[${requestId}] Making fetch request to:`, url, 'with headers:', headers)
+
       const response = await fetch(url, {
         ...options,
         headers,
+        // Add credentials to handle cookies if needed
+        credentials: 'same-origin',
       })
 
-      const data = await response.json()
+      console.log(`[${requestId}] Response status:`, response.status, 'statusText:', response.statusText)
 
-      if (!response.ok) {
-        throw new Error(data.message || "API request failed")
+      let data: any
+
+      // Parse response based on content type
+      const contentType = response.headers.get('content-type')
+      console.log(`[${requestId}] Response content-type:`, contentType)
+      console.log(`[${requestId}] Response body used?`, response.bodyUsed)
+
+      try {
+        // Check if response body has already been consumed
+        if (response.bodyUsed) {
+          console.warn(`[${requestId}] Response body has already been consumed! Using fallback...`)
+          data = response.ok
+            ? { success: true, message: "Request completed successfully", data: {} }
+            : { success: false, message: `HTTP ${response.status}: ${response.statusText}` }
+        } else {
+          // Try to read response as text first
+          let responseText: string
+          try {
+            responseText = await response.text()
+            console.log(`[${requestId}] Response text (first 500 chars):`, responseText.substring(0, 500))
+          } catch (textError) {
+            console.error(`[${requestId}] Failed to read response text:`, textError)
+            throw new Error(`Failed to read response: ${textError instanceof Error ? textError.message : 'Unknown error'}`)
+          }
+
+          // Parse the response text
+          if (!responseText) {
+            console.log(`[${requestId}] Empty response, using empty object`)
+            data = {}
+          } else {
+            // Always try to parse as JSON first if it looks like JSON
+            const trimmedText = responseText.trim()
+            if (trimmedText.startsWith('{') || trimmedText.startsWith('[')) {
+              try {
+                console.log(`[${requestId}] Attempting to parse as JSON`)
+                data = JSON.parse(responseText)
+                console.log(`[${requestId}] Successfully parsed JSON:`, data)
+              } catch (jsonError) {
+                console.warn(`[${requestId}] Failed to parse as JSON:`, jsonError)
+                console.warn(`[${requestId}] Raw response:`, responseText)
+                data = { success: false, message: responseText, rawResponse: true }
+              }
+            } else {
+              console.log(`[${requestId}] Non-JSON response, wrapping in message`)
+              data = { success: false, message: responseText, rawResponse: true }
+            }
+          }
+        }
+
+        console.log(`[${requestId}] Final parsed data:`, data)
+      } catch (parseError) {
+        console.error(`[${requestId}] Critical error parsing response:`, parseError)
+        throw new Error(`Failed to parse server response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`)
       }
 
+      if (!response.ok) {
+        const errorMessage = data?.message || data?.error || `HTTP ${response.status}: ${response.statusText}`
+        console.error(`[${requestId}] API request failed with status:`, response.status, 'data:', data)
+        console.error(`[${requestId}] Error message:`, errorMessage)
+        throw new Error(errorMessage)
+      }
+
+      console.log(`[${requestId}] API request successful:`, data)
       return data
     } catch (error) {
-      console.error("API request failed:", error)
-      throw error
+      console.error(`[${requestId}] API request failed:`, {
+        url,
+        method: options.method || 'GET',
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        type: typeof error,
+        errorConstructor: error?.constructor?.name
+      })
+
+      // Provide more specific error messages
+      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+        throw new Error('Network error: Unable to connect to server. Please check your internet connection and try again.')
+      }
+
+      // Handle reference errors (like the text is not defined error)
+      if (error instanceof ReferenceError) {
+        console.error(`[${requestId}] Reference error in API client:`, error.message)
+        throw new Error(`API client error: ${error.message}`)
+      }
+
+      // Handle specific error types
+      if (error instanceof Error) {
+        throw error
+      }
+
+      // Handle non-Error objects
+      throw new Error(typeof error === 'string' ? error : 'An unexpected error occurred')
     }
   }
 

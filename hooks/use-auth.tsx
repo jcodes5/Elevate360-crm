@@ -11,6 +11,7 @@ interface AuthContextType {
   logout: () => void
   isLoading: boolean
   isAuthenticated: boolean
+  needsOnboarding: boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -70,6 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logout,
     isLoading,
     isAuthenticated: !!user && !!token,
+    needsOnboarding: !!user && !user.isOnboardingCompleted,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

@@ -106,7 +106,7 @@ const data = {
     },
     {
       title: "Settings",
-      url: "/app/settings",
+      url: "/settings",
       icon: Settings,
     },
   ],
@@ -146,4 +146,3 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     </Sidebar>
   )
 }
-
