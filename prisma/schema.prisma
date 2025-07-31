@@ -196,6 +196,7 @@ model Deal {
   pipeline     Pipeline        @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
   assignedUser User            @relation(fields: [assignedTo], references: [id], onDelete: Restrict)
   organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tasks        Task[]
   activities   DealActivity[]
 
   @@map("deals")
