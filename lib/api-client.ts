@@ -4,6 +4,11 @@ class ApiClient {
   private baseUrl: string
   private token: string | null = null
 
+  // Public getter for debugging
+  get currentToken(): string | null {
+    return this.token
+  }
+
   constructor(baseUrl = "/api") {
     this.baseUrl = baseUrl
 
