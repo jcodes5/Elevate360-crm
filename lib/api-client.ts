@@ -125,24 +125,30 @@ class ApiClient {
 
           // Parse the response text
           if (!responseText) {
+            console.log(`[${requestId}] Empty response text, using empty object`)
             data = {}
           } else if (contentType && contentType.includes('application/json')) {
             // Parse as JSON if content-type suggests it
             try {
+              console.log(`[${requestId}] Parsing as JSON (content-type):`, responseText.substring(0, 200))
               data = JSON.parse(responseText)
             } catch (jsonError) {
               console.warn(`[${requestId}] Failed to parse JSON despite content-type:`, jsonError)
+              console.warn(`[${requestId}] Response text that failed to parse:`, responseText.substring(0, 500))
               data = { message: responseText }
             }
           } else if (responseText.startsWith('{') || responseText.startsWith('[')) {
             // Try to parse as JSON if it looks like JSON
             try {
+              console.log(`[${requestId}] Parsing as JSON (looks like JSON):`, responseText.substring(0, 200))
               data = JSON.parse(responseText)
             } catch (jsonError) {
               console.warn(`[${requestId}] Failed to parse JSON-like text:`, jsonError)
+              console.warn(`[${requestId}] Response text that failed to parse:`, responseText.substring(0, 500))
               data = { message: responseText }
             }
           } else {
+            console.log(`[${requestId}] Using response text as message:`, responseText.substring(0, 200))
             data = { message: responseText }
           }
         }
