@@ -783,3 +783,206 @@ export interface FunnelSegment {
   steps: FunnelStep[]
   conversionRates: FunnelConversion[]
 }
+
+// Dashboard Model
+export interface DashboardModel {
+  id: string
+  name: string
+  description?: string
+  layout: DashboardConfig
+  widgets: DashboardWidget[]
+  filters: GlobalFilter[]
+  permissions: DashboardPermissions
+  settings: DashboardSettings
+  organizationId: string
+  createdBy: string
+  createdAt: Date
+  updatedAt: Date
+  lastViewedAt?: Date
+  viewCount: number
+  isPublic: boolean
+  shareUrl?: string
+}
+
+export interface DashboardPermissions {
+  canView: string[]
+  canEdit: string[]
+  canShare: string[]
+  canDelete: string[]
+  defaultAccess: 'view' | 'edit' | 'none'
+}
+
+export interface DashboardSettings {
+  autoRefresh: boolean
+  refreshInterval: number
+  showFilters: boolean
+  showHeader: boolean
+  showFooter: boolean
+  fullScreen: boolean
+  theme: string
+  customCss?: string
+}
+
+// Report Model
+export interface ReportModel {
+  id: string
+  name: string
+  description?: string
+  type: ReportType
+  category: string
+  dataSource: DataSource
+  parameters: ReportParameter[]
+  columns: ReportColumn[]
+  filters: AnalyticsFilter[]
+  sorting: ReportSorting[]
+  grouping: ReportGrouping[]
+  formatting: ReportFormatting
+  schedule?: ReportSchedule
+  distribution: ReportDistribution
+  permissions: ReportPermissions
+  organizationId: string
+  createdBy: string
+  createdAt: Date
+  updatedAt: Date
+  lastRunAt?: Date
+  runCount: number
+}
+
+export type ReportType =
+  | 'tabular'
+  | 'summary'
+  | 'analytical'
+  | 'dashboard'
+  | 'chart'
+  | 'crosstab'
+  | 'matrix'
+  | 'subreport'
+
+export interface ReportParameter {
+  id: string
+  name: string
+  label: string
+  type: 'string' | 'number' | 'date' | 'boolean' | 'list'
+  defaultValue?: any
+  required: boolean
+  validation?: ParameterValidation
+  options?: ParameterOption[]
+  dependsOn?: string[]
+}
+
+export interface ParameterValidation {
+  min?: number
+  max?: number
+  pattern?: string
+  message?: string
+}
+
+export interface ParameterOption {
+  value: any
+  label: string
+  selected?: boolean
+}
+
+export interface ReportColumn {
+  id: string
+  field: string
+  label: string
+  type: 'string' | 'number' | 'date' | 'boolean' | 'currency'
+  width?: number
+  alignment: 'left' | 'center' | 'right'
+  format?: ColumnFormat
+  aggregation?: AggregationType
+  isVisible: boolean
+  order: number
+  groupable: boolean
+  sortable: boolean
+  filterable: boolean
+}
+
+export interface ColumnFormat {
+  type: 'number' | 'currency' | 'percentage' | 'date' | 'text'
+  decimals?: number
+  prefix?: string
+  suffix?: string
+  dateFormat?: string
+  currencyCode?: string
+}
+
+export interface ReportSorting {
+  column: string
+  direction: 'asc' | 'desc'
+  priority: number
+}
+
+export interface ReportGrouping {
+  column: string
+  level: number
+  showTotals: boolean
+  pageBreak: boolean
+  collapsed: boolean
+}
+
+export interface ReportFormatting {
+  pageSize: 'A4' | 'A3' | 'Letter' | 'Legal' | 'Custom'
+  orientation: 'portrait' | 'landscape'
+  margins: Margin
+  header?: ReportSection
+  footer?: ReportSection
+  watermark?: string
+  styles: ReportStyle[]
+}
+
+export interface ReportSection {
+  height: number
+  content: string
+  showOnFirstPage: boolean
+  showOnLastPage: boolean
+}
+
+export interface ReportStyle {
+  selector: string
+  properties: Record<string, string>
+}
+
+export interface ReportDistribution {
+  email: {
+    enabled: boolean
+    recipients: string[]
+    subject?: string
+    body?: string
+    attachmentFormat: ExportFormat[]
+  }
+  webhook: {
+    enabled: boolean
+    url?: string
+    method: 'POST' | 'PUT'
+    headers?: Record<string, string>
+    authentication?: WebhookAuth
+  }
+  ftp: {
+    enabled: boolean
+    host?: string
+    username?: string
+    password?: string
+    path?: string
+    format: ExportFormat
+  }
+}
+
+export interface WebhookAuth {
+  type: 'none' | 'basic' | 'bearer' | 'api_key'
+  username?: string
+  password?: string
+  token?: string
+  apiKey?: string
+  headerName?: string
+}
+
+export interface ReportPermissions {
+  canView: string[]
+  canEdit: string[]
+  canRun: string[]
+  canSchedule: string[]
+  canDistribute: string[]
+  defaultAccess: 'view' | 'run' | 'none'
+}
