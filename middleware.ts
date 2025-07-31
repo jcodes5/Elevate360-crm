@@ -171,11 +171,14 @@ export const config = {
   matcher: [
     /*
      * Match all request paths except for the ones starting with:
-     * - api (API routes)
+     * - api routes (handled separately)
      * - _next/static (static files)
      * - _next/image (image optimization files)
+     * - _next/webpack-hmr (hot module reloading)
      * - favicon.ico (favicon file)
+     * - public folder
+     * - files with extensions
      */
-    '/((?!_next/static|_next/image|favicon.ico).*)',
+    '/((?!api|_next/static|_next/image|_next/webpack-hmr|favicon.ico|public|.*\\.).*)',
   ],
 }
