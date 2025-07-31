@@ -23,8 +23,14 @@ export async function POST(request: NextRequest) {
     if (!user && email === "test@example.com") {
       console.log("Creating test data...")
       try {
-        const testData = await createTestData()
-        user = testData.testUser
+        const USE_MOCK_DB = process.env.USE_MOCK_DB === 'true'
+        if (USE_MOCK_DB) {
+          const testData = await createTestData()
+          user = testData.testUser
+        } else {
+          const testData = await createTestDataPrisma()
+          user = testData.testUser
+        }
       } catch (error) {
         console.error("Error creating test data:", error)
         return NextResponse.json({ success: false, message: "Error initializing test data" }, { status: 500 })
