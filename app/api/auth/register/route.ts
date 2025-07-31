@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { AuthService } from "@/lib/auth"
-import { db } from "@/lib/database"
+import { db } from "@/lib/database-config"
 import type { User } from "@/types"
 
 export async function POST(request: NextRequest) {
