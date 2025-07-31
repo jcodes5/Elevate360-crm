@@ -33,13 +33,26 @@ const DASHBOARD_ROUTE = '/dashboard'
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
-  
+
   // Skip middleware for static files and Next.js internals
   if (
     pathname.startsWith('/_next/') ||
+    pathname.startsWith('/__nextjs') ||
     pathname.startsWith('/favicon.ico') ||
     pathname.startsWith('/public/') ||
-    pathname.includes('.')
+    pathname.startsWith('/_vercel') ||
+    pathname.includes('.') ||
+    pathname.includes('__webpack_hmr') ||
+    request.headers.get('purpose') === 'prefetch'
+  ) {
+    return NextResponse.next()
+  }
+
+  // Skip middleware for webpack HMR and RSC requests
+  if (
+    request.headers.get('rsc') === '1' ||
+    request.headers.get('next-router-prefetch') ||
+    request.url.includes('_rsc')
   ) {
     return NextResponse.next()
   }
