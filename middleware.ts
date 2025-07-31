@@ -34,6 +34,12 @@ const DASHBOARD_ROUTE = '/dashboard'
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
+  // Temporarily disable middleware in development mode to avoid HMR issues
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Middleware disabled in development mode')
+    return NextResponse.next()
+  }
+
   // Skip middleware for static files and Next.js internals
   if (
     pathname.startsWith('/_next/') ||
