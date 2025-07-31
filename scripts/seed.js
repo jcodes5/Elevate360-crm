@@ -1,4 +1,4 @@
-import { createTestDataPrisma } from '/lib/seed-data-prisma.ts';
+const { createTestDataPrisma } = require('../lib/seed-data-prisma');
 
 async function main() {
   console.log('🌱 Seeding database...');
