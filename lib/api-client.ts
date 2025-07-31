@@ -134,8 +134,9 @@ class ApiClient {
       }
 
       if (!response.ok) {
-        const errorMessage = data.message || `HTTP ${response.status}: ${response.statusText}`
+        const errorMessage = data?.message || data?.error || `HTTP ${response.status}: ${response.statusText}`
         console.error(`[${requestId}] API request failed with status:`, response.status, 'data:', data)
+        console.error(`[${requestId}] Error message:`, errorMessage)
         throw new Error(errorMessage)
       }
 
