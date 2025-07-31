@@ -546,3 +546,43 @@ export interface DealForecastItem {
   confidence: 'high' | 'medium' | 'low'
   riskFactors?: string[]
 }
+
+// Deal Search Parameters
+export interface DealSearchParams {
+  query?: string
+  status?: DealStatus[]
+  stageIds?: string[]
+  pipelineIds?: string[]
+  assignedTo?: string[]
+  valueMin?: number
+  valueMax?: number
+  probabilityMin?: number
+  probabilityMax?: number
+  expectedCloseAfter?: Date
+  expectedCloseBefore?: Date
+  actualCloseAfter?: Date
+  actualCloseBefore?: Date
+  tags?: string[]
+  customFields?: Record<string, any>
+  page?: number
+  limit?: number
+  sortBy?: string
+  sortOrder?: 'asc' | 'desc'
+}
+
+// Deal Statistics
+export interface DealStats {
+  total: number
+  open: number
+  won: number
+  lost: number
+  totalValue: number
+  averageValue: number
+  averageCycleTime: number
+  winRate: number
+  byStage: Record<string, number>
+  byPipeline: Record<string, number>
+  byAssignee: Record<string, number>
+  forecastValue: number
+  weightedForecast: number
+}

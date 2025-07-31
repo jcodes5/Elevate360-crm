@@ -1,20 +1,16 @@
-// Prisma client stub - Prisma not installed
-console.warn('Prisma client stub loaded - @prisma/client not available')
+// Real Prisma client implementation
+import { PrismaClient } from '@prisma/client'
 
-// Mock PrismaClient interface
-export const prisma = {
-  $connect: async () => {
-    throw new Error('Prisma client not available. Please install @prisma/client or use mock database.')
-  },
-  $disconnect: async () => {
-    throw new Error('Prisma client not available. Please install @prisma/client or use mock database.')
-  },
-  // Add other Prisma methods as needed
-}
-
-// Make it available globally for compatibility
+// Singleton pattern for Prisma client
 const globalForPrisma = globalThis as unknown as {
-  prisma: typeof prisma | undefined
+  prisma: PrismaClient | undefined
 }
+
+export const prisma = globalForPrisma.prisma ?? new PrismaClient({
+  log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+})
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+
+// Export default for compatibility
+export default prisma

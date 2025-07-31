@@ -645,3 +645,44 @@ export interface CollaborationEvent {
   details: string
   timestamp: Date
 }
+
+// Task Search Parameters
+export interface TaskSearchParams {
+  query?: string
+  status?: TaskStatus[]
+  priority?: TaskPriority[]
+  type?: TaskType[]
+  category?: TaskCategory[]
+  assignedTo?: string[]
+  createdBy?: string[]
+  dueBefore?: Date
+  dueAfter?: Date
+  completedBefore?: Date
+  completedAfter?: Date
+  hasContact?: boolean
+  hasDeal?: boolean
+  tags?: string[]
+  isOverdue?: boolean
+  isCompleted?: boolean
+  customFields?: Record<string, any>
+  page?: number
+  limit?: number
+  sortBy?: string
+  sortOrder?: 'asc' | 'desc'
+}
+
+// Task Statistics
+export interface TaskStats {
+  total: number
+  pending: number
+  inProgress: number
+  completed: number
+  overdue: number
+  byPriority: Record<TaskPriority, number>
+  byStatus: Record<TaskStatus, number>
+  byAssignee: Record<string, number>
+  byCategory: Record<TaskCategory, number>
+  completionRate: number
+  averageCompletionTime: number
+  productivityScore: number
+}

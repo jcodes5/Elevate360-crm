@@ -359,3 +359,40 @@ export interface ContactAnalytics {
     opportunityToCustomer: number
   }
 }
+
+// Contact Search Parameters
+export interface ContactSearchParams {
+  query?: string
+  status?: ContactStatus[]
+  lifecycle?: ContactLifecycle[]
+  tags?: string[]
+  assignedTo?: string[]
+  source?: string[]
+  company?: string
+  leadScoreMin?: number
+  leadScoreMax?: number
+  createdAfter?: Date
+  createdBefore?: Date
+  lastActivityAfter?: Date
+  lastActivityBefore?: Date
+  customFields?: Record<string, any>
+  page?: number
+  limit?: number
+  sortBy?: string
+  sortOrder?: 'asc' | 'desc'
+}
+
+// Contact Statistics
+export interface ContactStats {
+  total: number
+  leads: number
+  prospects: number
+  customers: number
+  inactive: number
+  byStatus: Record<ContactStatus, number>
+  byLifecycle: Record<ContactLifecycle, number>
+  bySource: Record<string, number>
+  averageLeadScore: number
+  conversionRate: number
+  newThisMonth: number
+}

@@ -657,3 +657,133 @@ export interface WhatsAppSettings {
   accessToken: string
   webhookUrl?: string
 }
+
+// Campaign Search Parameters
+export interface CampaignSearchParams {
+  query?: string
+  type?: CampaignType[]
+  status?: CampaignStatus[]
+  category?: CampaignCategory[]
+  channel?: CampaignChannel[]
+  createdBy?: string[]
+  scheduledAfter?: Date
+  scheduledBefore?: Date
+  sentAfter?: Date
+  sentBefore?: Date
+  tags?: string[]
+  customFields?: Record<string, any>
+  page?: number
+  limit?: number
+  sortBy?: string
+  sortOrder?: 'asc' | 'desc'
+}
+
+// Campaign Statistics
+export interface CampaignStats {
+  total: number
+  sent: number
+  scheduled: number
+  draft: number
+  byType: Record<CampaignType, number>
+  byStatus: Record<CampaignStatus, number>
+  byChannel: Record<CampaignChannel, number>
+  totalSent: number
+  totalDelivered: number
+  totalOpened: number
+  totalClicked: number
+  averageOpenRate: number
+  averageClickRate: number
+  totalRevenue: number
+}
+
+// Campaign Analytics (separate from metrics for broader analysis)
+export interface CampaignAnalytics {
+  performance: CampaignPerformanceAnalytics
+  audience: CampaignAudienceAnalytics
+  engagement: CampaignEngagementAnalytics
+  conversion: CampaignConversionAnalytics
+  trends: CampaignTrendAnalytics
+  benchmarks: CampaignBenchmarkAnalytics
+}
+
+export interface CampaignPerformanceAnalytics {
+  totalCampaigns: number
+  activeCampaigns: number
+  completedCampaigns: number
+  averageOpenRate: number
+  averageClickRate: number
+  averageConversionRate: number
+  totalRevenue: number
+  averageROI: number
+  bestPerformingCampaign: {
+    id: string
+    name: string
+    metric: string
+    value: number
+  }
+}
+
+export interface CampaignAudienceAnalytics {
+  totalAudience: number
+  activeSubscribers: number
+  unsubscribed: number
+  bounced: number
+  demographics: DemographicBreakdown
+  geographic: GeographicBreakdown
+  segmentPerformance: Record<string, number>
+}
+
+export interface CampaignEngagementAnalytics {
+  emailOpens: number
+  linkClicks: number
+  socialShares: number
+  forwardRate: number
+  timeToOpen: number
+  timeToClick: number
+  engagementByTime: TimeAnalysis
+  topPerformingContent: Array<{
+    content: string
+    metric: string
+    value: number
+  }>
+}
+
+export interface CampaignConversionAnalytics {
+  totalConversions: number
+  conversionRate: number
+  conversionValue: number
+  averageOrderValue: number
+  topConvertingCampaigns: Array<{
+    id: string
+    name: string
+    conversions: number
+    value: number
+  }>
+  conversionFunnel: Array<{
+    stage: string
+    count: number
+    rate: number
+  }>
+}
+
+export interface CampaignTrendAnalytics {
+  openRateTrend: TrendData[]
+  clickRateTrend: TrendData[]
+  conversionTrend: TrendData[]
+  revenueTrend: TrendData[]
+  audienceGrowth: TrendData[]
+}
+
+export interface CampaignBenchmarkAnalytics {
+  industryBenchmarks: Record<string, number>
+  competitorComparison: Record<string, number>
+  historicalComparison: Record<string, number>
+  performanceGrades: Record<string, 'A' | 'B' | 'C' | 'D' | 'F'>
+}
+
+export interface TrendData {
+  date: Date
+  value: number
+  change: number
+  changePercent: number
+}
