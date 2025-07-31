@@ -164,7 +164,7 @@ export function OnboardingFlow() {
     setIsLoading(true)
     try {
       console.log("Starting onboarding completion with data:", data)
-      console.log("Current API client token:", apiClient.token ? "Present" : "Missing")
+      console.log("Current API client token:", apiClient.currentToken ? "Present" : "Missing")
 
       // Test basic API functionality first
       console.log("Testing API connectivity...")
