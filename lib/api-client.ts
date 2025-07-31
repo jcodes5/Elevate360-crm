@@ -75,87 +75,56 @@ class ApiClient {
 
       let data: any
 
+      // Parse response based on content type
+      const contentType = response.headers.get('content-type')
+      console.log(`[${requestId}] Response content-type:`, contentType)
+      console.log(`[${requestId}] Response body used?`, response.bodyUsed)
+
       try {
         // Check if response body has already been consumed
         if (response.bodyUsed) {
-          console.warn(`[${requestId}] Response body has already been consumed! Attempting fallback...`)
-
-          // Fallback: Create a synthetic response based on HTTP status
-          if (response.ok) {
-            console.log(`[${requestId}] Using fallback success response`)
-            data = {
-              success: true,
-              message: "Request completed successfully (body consumed by external process)",
-              data: {}
-            }
-          } else {
-            console.log(`[${requestId}] Using fallback error response`)
-            data = {
-              success: false,
-              message: `HTTP ${response.status}: ${response.statusText}`
-            }
-          }
+          console.warn(`[${requestId}] Response body has already been consumed! Using fallback...`)
+          data = response.ok
+            ? { success: true, message: "Request completed successfully", data: {} }
+            : { success: false, message: `HTTP ${response.status}: ${response.statusText}` }
         } else {
-          // Normal path: read the response body
-          const contentType = response.headers.get('content-type')
-          console.log(`[${requestId}] Response content-type:`, contentType)
-          console.log(`[${requestId}] Response body used?`, response.bodyUsed)
-
-          // Read the response body
-          let responseText: string = ''
+          // Try to read response as text first
+          let responseText: string
           try {
             responseText = await response.text()
-            console.log(`[${requestId}] Response text:`, responseText)
+            console.log(`[${requestId}] Response text (first 500 chars):`, responseText.substring(0, 500))
           } catch (textError) {
             console.error(`[${requestId}] Failed to read response text:`, textError)
-
-            // If text() fails due to body consumption, use fallback
-            if (textError instanceof Error && textError.message.includes('body stream already read')) {
-              console.warn(`[${requestId}] Body consumed during read, using fallback`)
-              if (response.ok) {
-                data = { success: true, message: "Request successful", data: {} }
-              } else {
-                data = { success: false, message: `HTTP ${response.status}: ${response.statusText}` }
-              }
-              responseText = '' // Ensure responseText is defined
-            } else {
-              throw new Error(`Failed to read response: ${textError instanceof Error ? textError.message : 'Unknown error'}`)
-            }
+            throw new Error(`Failed to read response: ${textError instanceof Error ? textError.message : 'Unknown error'}`)
           }
 
           // Parse the response text
           if (!responseText) {
-            console.log(`[${requestId}] Empty response text, using empty object`)
+            console.log(`[${requestId}] Empty response, using empty object`)
             data = {}
-          } else if (contentType && contentType.includes('application/json')) {
-            // Parse as JSON if content-type suggests it
-            try {
-              console.log(`[${requestId}] Parsing as JSON (content-type):`, responseText.substring(0, 200))
-              data = JSON.parse(responseText)
-            } catch (jsonError) {
-              console.warn(`[${requestId}] Failed to parse JSON despite content-type:`, jsonError)
-              console.warn(`[${requestId}] Response text that failed to parse:`, responseText.substring(0, 500))
-              data = { message: responseText }
-            }
-          } else if (responseText.startsWith('{') || responseText.startsWith('[')) {
-            // Try to parse as JSON if it looks like JSON
-            try {
-              console.log(`[${requestId}] Parsing as JSON (looks like JSON):`, responseText.substring(0, 200))
-              data = JSON.parse(responseText)
-            } catch (jsonError) {
-              console.warn(`[${requestId}] Failed to parse JSON-like text:`, jsonError)
-              console.warn(`[${requestId}] Response text that failed to parse:`, responseText.substring(0, 500))
-              data = { message: responseText }
-            }
           } else {
-            console.log(`[${requestId}] Using response text as message:`, responseText.substring(0, 200))
-            data = { message: responseText }
+            // Always try to parse as JSON first if it looks like JSON
+            const trimmedText = responseText.trim()
+            if (trimmedText.startsWith('{') || trimmedText.startsWith('[')) {
+              try {
+                console.log(`[${requestId}] Attempting to parse as JSON`)
+                data = JSON.parse(responseText)
+                console.log(`[${requestId}] Successfully parsed JSON:`, data)
+              } catch (jsonError) {
+                console.warn(`[${requestId}] Failed to parse as JSON:`, jsonError)
+                console.warn(`[${requestId}] Raw response:`, responseText)
+                data = { success: false, message: responseText, rawResponse: true }
+              }
+            } else {
+              console.log(`[${requestId}] Non-JSON response, wrapping in message`)
+              data = { success: false, message: responseText, rawResponse: true }
+            }
           }
         }
 
-        console.log(`[${requestId}] Parsed response data:`, data)
+        console.log(`[${requestId}] Final parsed data:`, data)
       } catch (parseError) {
-        console.error(`[${requestId}] Error parsing response:`, parseError)
+        console.error(`[${requestId}] Critical error parsing response:`, parseError)
         throw new Error(`Failed to parse server response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`)
       }
 
