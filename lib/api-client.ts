@@ -102,10 +102,10 @@ class ApiClient {
           console.log(`[${requestId}] Response body used?`, response.bodyUsed)
 
           // Read the response body
-          let text: string
+          let responseText: string = ''
           try {
-            text = await response.text()
-            console.log(`[${requestId}] Response text:`, text)
+            responseText = await response.text()
+            console.log(`[${requestId}] Response text:`, responseText)
           } catch (textError) {
             console.error(`[${requestId}] Failed to read response text:`, textError)
 
@@ -117,57 +117,34 @@ class ApiClient {
               } else {
                 data = { success: false, message: `HTTP ${response.status}: ${response.statusText}` }
               }
+              responseText = '' // Ensure responseText is defined
             } else {
               throw new Error(`Failed to read response: ${textError instanceof Error ? textError.message : 'Unknown error'}`)
             }
           }
 
-          // Only parse if we successfully read the text
-          if (typeof text === 'string') {
-            if (!text) {
-              data = {}
-            } else if (contentType && contentType.includes('application/json')) {
-              // Parse as JSON if content-type suggests it
-              try {
-                data = JSON.parse(text)
-              } catch (jsonError) {
-                console.warn(`[${requestId}] Failed to parse JSON despite content-type:`, jsonError)
-                data = { message: text }
-              }
-            } else if (text.startsWith('{') || text.startsWith('[')) {
-              // Try to parse as JSON if it looks like JSON
-              try {
-                data = JSON.parse(text)
-              } catch (jsonError) {
-                console.warn(`[${requestId}] Failed to parse JSON-like text:`, jsonError)
-                data = { message: text }
-              }
-            } else {
-              data = { message: text }
+          // Parse the response text
+          if (!responseText) {
+            data = {}
+          } else if (contentType && contentType.includes('application/json')) {
+            // Parse as JSON if content-type suggests it
+            try {
+              data = JSON.parse(responseText)
+            } catch (jsonError) {
+              console.warn(`[${requestId}] Failed to parse JSON despite content-type:`, jsonError)
+              data = { message: responseText }
             }
+          } else if (responseText.startsWith('{') || responseText.startsWith('[')) {
+            // Try to parse as JSON if it looks like JSON
+            try {
+              data = JSON.parse(responseText)
+            } catch (jsonError) {
+              console.warn(`[${requestId}] Failed to parse JSON-like text:`, jsonError)
+              data = { message: responseText }
+            }
+          } else {
+            data = { message: responseText }
           }
-        }
-
-        if (!text) {
-          data = {}
-        } else if (contentType && contentType.includes('application/json')) {
-          // Parse as JSON if content-type suggests it
-          try {
-            data = JSON.parse(text)
-          } catch (jsonError) {
-            console.warn('Failed to parse JSON despite content-type:', jsonError)
-            data = { message: text }
-          }
-        } else if (text.startsWith('{') || text.startsWith('[')) {
-          // Try to parse as JSON if it looks like JSON
-          try {
-            data = JSON.parse(text)
-          } catch (jsonError) {
-            console.warn('Failed to parse JSON-like text:', jsonError)
-            data = { message: text }
-          }
-        } else {
-          data = { message: text }
         }
 
         console.log(`[${requestId}] Parsed response data:`, data)
