@@ -166,13 +166,7 @@ export function OnboardingFlow() {
       console.log("Starting onboarding completion with data:", data)
       console.log("Current API client token:", apiClient.currentToken ? "Present" : "Missing")
 
-      // Test basic API functionality first
-      console.log("Testing API connectivity...")
-      const testResponse = await apiClient.post('/test', { test: 'data' })
-      console.log("Test API response:", testResponse)
-
       // Save onboarding data
-      console.log("Calling onboarding API...")
       const response = await apiClient.post('/users/complete-onboarding', {
         onboardingData: data,
         isOnboardingCompleted: true
