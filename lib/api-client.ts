@@ -145,13 +145,22 @@ class ApiClient {
     } catch (error) {
       console.error(`[${requestId}] API request failed:`, {
         url,
+        method: options.method || 'GET',
         error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined
+        stack: error instanceof Error ? error.stack : undefined,
+        type: typeof error,
+        errorConstructor: error?.constructor?.name
       })
 
       // Provide more specific error messages
       if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
         throw new Error('Network error: Unable to connect to server. Please check your internet connection and try again.')
+      }
+
+      // Handle reference errors (like the text is not defined error)
+      if (error instanceof ReferenceError) {
+        console.error(`[${requestId}] Reference error in API client:`, error.message)
+        throw new Error(`API client error: ${error.message}`)
       }
 
       // Handle specific error types
