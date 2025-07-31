@@ -2,8 +2,8 @@
 import { db as mockDb } from "./database"
 
 // Environment variable to control which database to use
-// Default to true since Prisma is not installed
-const USE_MOCK_DB = process.env.USE_MOCK_DB !== 'false'
+// Default to false since Prisma is now installed
+const USE_MOCK_DB = process.env.USE_MOCK_DB === 'true'
 
 console.log(`Using ${USE_MOCK_DB ? 'Mock' : 'Prisma'} database`)
 
