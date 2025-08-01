@@ -17,7 +17,7 @@ export interface User {
   updatedAt: Date
 }
 
-export type UserRole = "admin" | "manager" | "agent"
+export type UserRole = "ADMIN" | "MANAGER" | "AGENT"
 
 export interface AuthResponse {
   user: User
@@ -49,7 +49,7 @@ export interface Contact {
   updatedAt: Date
 }
 
-export type ContactStatus = "lead" | "prospect" | "customer" | "inactive" | "lost"
+export type ContactStatus = "LEAD" | "PROSPECT" | "customer" | "inactive" | "lost"
 
 export interface ContactNote {
   id: string

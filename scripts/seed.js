@@ -1,4 +1,8 @@
-const { createTestDataPrisma } = require('../lib/seed-data-prisma');
+// Use ts-node to execute the TypeScript seed function with proper configuration
+require('ts-node').register({
+  project: './tsconfig.seed.json'
+});
+const { createTestDataPrisma } = require('../lib/seed-data-prisma.ts');
 
 async function main() {
   console.log('🌱 Seeding database...');
@@ -12,7 +16,7 @@ async function main() {
     console.log('- Manager: manager@example.com / password123');
     console.log('- Agent: agent@example.com / password123');
   } catch (error) {
-    console.error('❌ Seeding failed:', error);
+    console.error('❌ Error seeding database:', error);
     process.exit(1);
   }
 }
