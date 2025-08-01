@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { EnhancedAuthService, canAccessResource } from "@/lib/auth-enhanced"
-import { db } from "@/lib/database-config"
+import { prisma } from "@/lib/db"
 import type { User } from "@/types"
 
 // Helper function to verify admin access
@@ -43,25 +43,48 @@ export async function GET(request: NextRequest) {
     }
 
     // Get users (excluding passwords)
-    const users = await db.findMany<User>("users", filter, {
-      limit,
-      offset: (page - 1) * limit
+    const users = await prisma.user.findMany({
+      where: filter,
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        avatar: true,
+        phone: true,
+        isActive: true,
+        lastLogin: true,
+        isOnboardingCompleted: true,
+        onboardingStep: true,
+        createdAt: true,
+        updatedAt: true,
+        organizationId: true,
+        organization: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
+      },
+      skip: (page - 1) * limit,
+      take: limit,
+      orderBy: { createdAt: 'desc' }
     })
 
-    // Remove passwords from all users
-    const sanitizedUsers = users.map(user => {
-      const { password, ...userWithoutPassword } = user
-      return userWithoutPassword
-    })
+    const totalUsers = await prisma.user.count({ where: filter })
 
     return NextResponse.json({
       success: true,
       data: {
-        users: sanitizedUsers,
+        users,
         pagination: {
           page,
           limit,
-          total: users.length
+          total: totalUsers,
+          totalPages: Math.ceil(totalUsers / limit),
+          hasNext: page < Math.ceil(totalUsers / limit),
+          hasPrev: page > 1
         }
       },
       message: "Users retrieved successfully"
@@ -134,8 +157,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user already exists
-    const existingUsers = await db.findMany<User>("users", { email })
-    if (existingUsers.length > 0) {
+    const existingUser = await prisma.user.findUnique({ where: { email } })
+    if (existingUser) {
       return NextResponse.json(
         { success: false, message: "User with this email already exists" },
         { status: 409 }
@@ -160,15 +183,36 @@ export async function POST(request: NextRequest) {
       updatedAt: new Date(),
     }
 
-    const user = await db.create<User>("users", userData as any)
-
-    // Remove password from response
-    const { password: _, ...userWithoutPassword } = user
+    const user = await prisma.user.create({
+      data: userData,
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        avatar: true,
+        phone: true,
+        isActive: true,
+        lastLogin: true,
+        isOnboardingCompleted: true,
+        onboardingStep: true,
+        createdAt: true,
+        updatedAt: true,
+        organizationId: true,
+        organization: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
+      }
+    })
 
     return NextResponse.json(
       {
         success: true,
-        data: { user: userWithoutPassword },
+        data: { user },
         message: "User created successfully"
       },
       { status: 201 }
