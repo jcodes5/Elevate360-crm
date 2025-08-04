@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useCallback, useRef } from "react"
 import { DndProvider, useDrag, useDrop } from "react-dnd"
 import { HTML5Backend } from "react-dnd-html5-backend"
@@ -201,7 +200,11 @@ function DraggableNode({ template }: { template: any }) {
 
   return (
     <motion.div
-      ref={drag}
+      ref={(node) => {
+        if (node) {
+          drag(node);
+        }
+      }}
       className={`p-3 border rounded-lg cursor-move transition-all hover:shadow-md ${
         isDragging ? "opacity-50" : "opacity-100"
       }`}
@@ -277,14 +280,14 @@ function NodeConfigModal({ node, isOpen, onClose, onSave }: any) {
               <Label htmlFor="subject">Email Subject</Label>
               <Input id="subject" {...form.register("subject")} placeholder="Enter email subject" />
               {form.formState.errors.subject && (
-                <p className="text-red-500 text-sm mt-1">{form.formState.errors.subject.message}</p>
+                <p className="text-red-500 text-sm mt-1">{form.formState.errors.subject?.message?.toString()}</p>
               )}
             </div>
             <div>
               <Label htmlFor="content">Email Content</Label>
               <Textarea id="content" {...form.register("content")} placeholder="Enter email content" rows={6} />
               {form.formState.errors.content && (
-                <p className="text-red-500 text-sm mt-1">{form.formState.errors.content.message}</p>
+                <p className="text-red-500 text-sm mt-1">{form.formState.errors.content?.message?.toString()}</p>
               )}
             </div>
             <div>
@@ -309,7 +312,7 @@ function NodeConfigModal({ node, isOpen, onClose, onSave }: any) {
               />
               <div className="flex justify-between items-center mt-1">
                 {form.formState.errors.message && (
-                  <p className="text-red-500 text-sm">{form.formState.errors.message.message}</p>
+                  <p className="text-red-500 text-sm">{form.formState.errors.message?.message?.toString()}</p>
                 )}
                 <div className={`text-xs ml-auto ${messageLength > 160 ? "text-red-500" : "text-muted-foreground"}`}>
                   {messageLength}/160 characters
@@ -332,7 +335,7 @@ function NodeConfigModal({ node, isOpen, onClose, onSave }: any) {
                 min="1"
               />
               {form.formState.errors.duration && (
-                <p className="text-red-500 text-sm mt-1">{form.formState.errors.duration.message}</p>
+                <p className="text-red-500 text-sm mt-1">{form.formState.errors.duration?.message?.toString()}</p>
               )}
             </div>
             <div>
@@ -386,28 +389,40 @@ function NodeConfigModal({ node, isOpen, onClose, onSave }: any) {
   )
 }
 
-// Main visual flow builder component
-export function VisualFlowBuilder() {
-  const [nodes, setNodes, onNodesChange] = useNodesState([])
-  const [edges, setEdges, onEdgesChange] = useEdgesState([])
-  const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null)
-  const [selectedNode, setSelectedNode] = useState<Node | null>(null)
-  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false)
-  const [workflowName, setWorkflowName] = useState("Untitled Workflow")
-  const reactFlowWrapper = useRef<HTMLDivElement>(null)
-  const queryClient = useQueryClient()
-
-  // Drop zone for adding new nodes
+// Drop zone component
+function DropZone({
+  reactFlowInstance,
+  reactFlowWrapper,
+  setNodes,
+  nodes,
+  edges,
+  onNodesChange,
+  onEdgesChange,
+  onConnect,
+  setReactFlowInstance,
+  onNodeClick,
+}: {
+  reactFlowInstance: ReactFlowInstance | null;
+  reactFlowWrapper: React.RefObject<HTMLDivElement>;
+  setNodes: (nodes: Node[] | ((prev: Node[]) => Node[])) => void;
+  nodes: Node[];
+  edges: any[];
+  onNodesChange: any;
+  onEdgesChange: any;
+  onConnect: (params: Connection) => void;
+  setReactFlowInstance: (instance: ReactFlowInstance | null) => void;
+  onNodeClick: (event: React.MouseEvent, node: Node) => void;
+}) {
   const [{ isOver }, drop] = useDrop(() => ({
     accept: "workflow-node",
     drop: (item: any, monitor) => {
-      const clientOffset = monitor.getClientOffset()
+      const clientOffset = monitor.getClientOffset();
       if (clientOffset && reactFlowInstance && reactFlowWrapper.current) {
-        const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect()
+        const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
         const position = reactFlowInstance.project({
           x: clientOffset.x - reactFlowBounds.left,
           y: clientOffset.y - reactFlowBounds.top,
-        })
+        });
 
         const newNode: Node = {
           id: `${item.id}_${Date.now()}`,
@@ -422,19 +437,63 @@ export function VisualFlowBuilder() {
             config: {},
             configured: false,
           },
-        }
+        };
 
-        setNodes((nds) => nds.concat(newNode))
+        setNodes((nds) => nds.concat(newNode));
         toast({
           title: "Node Added",
           description: `${item.name} has been added to your workflow`,
-        })
+        });
       }
     },
     collect: (monitor) => ({
       isOver: monitor.isOver(),
     }),
-  }))
+  }), [reactFlowInstance, reactFlowWrapper, setNodes]);
+
+  return (
+    <div className="flex-1" ref={drop}>
+      <div className="h-full" ref={reactFlowWrapper}>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          onInit={setReactFlowInstance}
+          onNodeClick={onNodeClick}
+          nodeTypes={nodeTypes}
+          className={`transition-colors duration-200 ${isOver ? "bg-blue-50" : "bg-gray-50"}`}
+          defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+          minZoom={0.2}
+          maxZoom={2}
+          attributionPosition="bottom-left"
+        >
+          <Background color="#aaa" gap={16} />
+          <MiniMap
+            nodeColor={(node) => node.data.color || "#e2e8f0"}
+            nodeStrokeWidth={3}
+            zoomable
+            pannable
+            className="bg-white"
+          />
+          <Controls className="bg-white shadow-lg border" />
+        </ReactFlow>
+      </div>
+    </div>
+  );
+}
+
+// Main visual flow builder component
+export function VisualFlowBuilder() {
+  const [nodes, setNodes, onNodesChange] = useNodesState([])
+  const [edges, setEdges, onEdgesChange] = useEdgesState([])
+  const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null)
+  const [selectedNode, setSelectedNode] = useState<Node | null>(null)
+  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false)
+  const [workflowName, setWorkflowName] = useState("Untitled Workflow")
+  const reactFlowWrapper = useRef<HTMLDivElement>(null)
+  const queryClient = useQueryClient()
 
   const onConnect = useCallback((params: Connection) => setEdges((eds) => addEdge(params, eds)), [setEdges])
 
@@ -544,166 +603,149 @@ export function VisualFlowBuilder() {
   }
 
   return (
-    <DndProvider backend={HTML5Backend}>
-      <div className="h-screen flex bg-gray-50">
-        {/* Sidebar */}
-        <motion.div
-          initial={{ x: -300 }}
-          animate={{ x: 0 }}
-          className="w-80 bg-white border-r shadow-sm overflow-y-auto"
-        >
-          <div className="p-4 border-b">
-            <h2 className="text-lg font-semibold text-gray-900">Workflow Builder</h2>
-            <p className="text-sm text-gray-600">Drag components to create your automation</p>
-          </div>
-
-          <Tabs defaultValue="triggers" className="p-4">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="triggers">Start</TabsTrigger>
-              <TabsTrigger value="actions">Actions</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="triggers" className="space-y-4 mt-4">
-              <div>
-                <h3 className="font-medium text-sm text-green-700 mb-2">Triggers</h3>
-                <div className="space-y-2">
-                  {nodeTemplates.triggers.map((template) => (
-                    <DraggableNode key={template.id} template={template} />
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <h3 className="font-medium text-sm text-yellow-700 mb-2">Conditions</h3>
-                <div className="space-y-2">
-                  {nodeTemplates.conditions.map((template) => (
-                    <DraggableNode key={template.id} template={template} />
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <h3 className="font-medium text-sm text-purple-700 mb-2">Delays</h3>
-                <div className="space-y-2">
-                  {nodeTemplates.delays.map((template) => (
-                    <DraggableNode key={template.id} template={template} />
-                  ))}
-                </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="actions" className="space-y-4 mt-4">
-              <div>
-                <h3 className="font-medium text-sm text-blue-700 mb-2">Actions</h3>
-                <div className="space-y-2">
-                  {nodeTemplates.actions.map((template) => (
-                    <DraggableNode key={template.id} template={template} />
-                  ))}
-                </div>
-              </div>
-            </TabsContent>
-          </Tabs>
-        </motion.div>
-
-        {/* Main Canvas */}
-        <div className="flex-1 flex flex-col">
-          {/* Header */}
-          <motion.div initial={{ y: -50 }} animate={{ y: 0 }} className="bg-white border-b p-4 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <Input
-                  value={workflowName}
-                  onChange={(e) => setWorkflowName(e.target.value)}
-                  className="font-medium text-lg border-none p-0 focus:ring-0 bg-transparent"
-                  placeholder="Workflow Name"
-                />
-                <Badge variant="outline" className="text-xs">
-                  {nodes.length} nodes
-                </Badge>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleTestWorkflow}
-                  disabled={testWorkflowMutation.isPending || nodes.length === 0}
-                >
-                  <Play className="w-4 h-4 mr-2" />
-                  {testWorkflowMutation.isPending ? "Testing..." : "Test"}
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handleSaveWorkflow}
-                  disabled={saveWorkflowMutation.isPending || nodes.length === 0}
-                >
-                  <Save className="w-4 h-4 mr-2" />
-                  {saveWorkflowMutation.isPending ? "Saving..." : "Save"}
-                </Button>
-              </div>
+    <ReactFlowProvider>
+      <DndProvider backend={HTML5Backend}>
+        <div className="h-screen flex bg-gray-50">
+          {/* Sidebar */}
+          <motion.div
+            initial={{ x: -300 }}
+            animate={{ x: 0 }}
+            className="w-80 bg-white border-r shadow-sm overflow-y-auto"
+          >
+            <div className="p-4 border-b">
+              <h2 className="text-lg font-semibold text-gray-900">Workflow Builder</h2>
+              <p className="text-sm text-gray-600">Drag components to create your automation</p>
             </div>
+
+            <Tabs defaultValue="triggers" className="p-4">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="triggers">Start</TabsTrigger>
+                <TabsTrigger value="actions">Actions</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="triggers" className="space-y-4 mt-4">
+                <div>
+                  <h3 className="font-medium text-sm text-green-700 mb-2">Triggers</h3>
+                  <div className="space-y-2">
+                    {nodeTemplates.triggers.map((template) => (
+                      <DraggableNode key={template.id} template={template} />
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="font-medium text-sm text-yellow-700 mb-2">Conditions</h3>
+                  <div className="space-y-2">
+                    {nodeTemplates.conditions.map((template) => (
+                      <DraggableNode key={template.id} template={template} />
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="font-medium text-sm text-purple-700 mb-2">Delays</h3>
+                  <div className="space-y-2">
+                    {nodeTemplates.delays.map((template) => (
+                      <DraggableNode key={template.id} template={template} />
+                    ))}
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="actions" className="space-y-4 mt-4">
+                <div>
+                  <h3 className="font-medium text-sm text-blue-700 mb-2">Actions</h3>
+                  <div className="space-y-2">
+                    {nodeTemplates.actions.map((template) => (
+                      <DraggableNode key={template.id} template={template} />
+                    ))}
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
           </motion.div>
 
-          {/* React Flow Canvas */}
-          <div className="flex-1" ref={reactFlowWrapper}>
-            <div ref={drop} className="h-full">
-              <ReactFlowProvider>
-                <ReactFlow
-                  nodes={nodes}
-                  edges={edges}
-                  onNodesChange={onNodesChange}
-                  onEdgesChange={onEdgesChange}
-                  onConnect={onConnect}
-                  onInit={setReactFlowInstance}
-                  onNodeClick={onNodeClick}
-                  nodeTypes={nodeTypes}
-                  className={`transition-colors duration-200 ${isOver ? "bg-blue-50" : "bg-gray-50"}`}
-                  defaultViewport={{ x: 0, y: 0, zoom: 1 }}
-                  minZoom={0.2}
-                  maxZoom={2}
-                  attributionPosition="bottom-left"
-                >
-                  <Background color="#aaa" gap={16} />
-                  <MiniMap
-                    nodeColor={(node) => node.data.color || "#e2e8f0"}
-                    nodeStrokeWidth={3}
-                    zoomable
-                    pannable
-                    className="bg-white"
+          {/* Main Canvas */}
+          <div className="flex-1 flex flex-col">
+            {/* Header */}
+            <motion.div initial={{ y: -50 }} animate={{ y: 0 }} className="bg-white border-b p-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <Input
+                    value={workflowName}
+                    onChange={(e) => setWorkflowName(e.target.value)}
+                    className="font-medium text-lg border-none p-0 focus:ring-0 bg-transparent"
+                    placeholder="Workflow Name"
                   />
-                  <Controls className="bg-white shadow-lg border" />
-                </ReactFlow>
-
-                {nodes.length === 0 && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                  <Badge variant="outline" className="text-xs">
+                    {nodes.length} nodes
+                  </Badge>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleTestWorkflow}
+                    disabled={testWorkflowMutation.isPending || nodes.length === 0}
                   >
-                    <div className="text-center">
-                      <Zap className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                      <h3 className="text-xl font-medium text-gray-600 mb-2">Start Building Your Workflow</h3>
-                      <p className="text-gray-500 max-w-md">
-                        Drag workflow components from the sidebar to create your marketing automation sequence
-                      </p>
-                    </div>
-                  </motion.div>
-                )}
-              </ReactFlowProvider>
-            </div>
-          </div>
-        </div>
+                    <Play className="w-4 h-4 mr-2" />
+                    {testWorkflowMutation.isPending ? "Testing..." : "Test"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleSaveWorkflow}
+                    disabled={saveWorkflowMutation.isPending || nodes.length === 0}
+                  >
+                    <Save className="w-4 h-4 mr-2" />
+                    {saveWorkflowMutation.isPending ? "Saving..." : "Save"}
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
 
-        {/* Node Configuration Modal */}
-        <NodeConfigModal
-          node={selectedNode}
-          isOpen={isConfigModalOpen}
-          onClose={() => {
-            setIsConfigModalOpen(false)
-            setSelectedNode(null)
-          }}
-          onSave={onNodeConfigSave}
-        />
-      </div>
-    </DndProvider>
+            {/* React Flow Canvas */}
+            <DropZone
+              reactFlowInstance={reactFlowInstance}
+              reactFlowWrapper={reactFlowWrapper}
+              setNodes={setNodes}
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onConnect={onConnect}
+              setReactFlowInstance={setReactFlowInstance}
+              onNodeClick={onNodeClick}
+            />
+
+            {nodes.length === 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="absolute inset-0 flex items-center justify-center pointer-events-none"
+              >
+                <div className="text-center">
+                  <Zap className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-xl font-medium text-gray-600 mb-2">Start Building Your Workflow</h3>
+                  <p className="text-gray-500 max-w-md">
+                    Drag workflow components from the sidebar to create your marketing automation sequence
+                  </p>
+                </div>
+              </motion.div>
+            )}
+          </div>
+
+          {/* Node Configuration Modal */}
+          <NodeConfigModal
+            node={selectedNode}
+            isOpen={isConfigModalOpen}
+            onClose={() => {
+              setIsConfigModalOpen(false)
+              setSelectedNode(null)
+            }}
+            onSave={onNodeConfigSave}
+          />
+        </div>
+      </DndProvider>
+    </ReactFlowProvider>
   )
 }
