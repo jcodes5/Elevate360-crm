@@ -768,9 +768,10 @@ export function VisualFlowBuilder() {
           </div>
 
           <Tabs defaultValue="triggers" className="p-4">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="triggers">Start</TabsTrigger>
               <TabsTrigger value="actions">Actions</TabsTrigger>
+              <TabsTrigger value="integrations">Apps</TabsTrigger>
             </TabsList>
 
             <TabsContent value="triggers" className="space-y-4 mt-4">
