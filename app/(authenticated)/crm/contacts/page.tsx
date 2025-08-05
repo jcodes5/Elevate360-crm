@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from "react"
-import { Plus, Search, Filter, MoreHorizontal, Mail, Phone, MessageSquare, Edit, Trash2, Star, Tag } from "lucide-react"
+import { useState, useMemo } from "react"
+import { Plus, Search, Filter, MoreHorizontal, Mail, Phone, MessageSquare, Edit, Trash2, Star, Tag, Users, Sliders } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { AdvancedFilters } from "@/components/contacts/advanced-filters"
 
 import type { Contact } from "@/types"
 
@@ -76,18 +78,59 @@ export default function ContactsPage() {
   const [contacts, setContacts] = useState(mockContacts)
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedStatus, setSelectedStatus] = useState<string>("all")
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
+  const [activeFilters, setActiveFilters] = useState<any[]>([])
+  const [selectedSegment, setSelectedSegment] = useState<any>(null)
 
-  const filteredContacts = contacts.filter((contact) => {
-    const matchesSearch =
-      contact.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contact.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contact.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contact.phone.includes(searchTerm)
+  // Apply advanced filters logic
+  const applyAdvancedFilters = (contact: Contact, filters: any[]) => {
+    if (filters.length === 0) return true
 
-    const matchesStatus = selectedStatus === "all" || contact.status === selectedStatus
+    // Simple implementation - in real app this would be more sophisticated
+    return filters.every(filter => {
+      const value = contact[filter.field as keyof Contact]
 
-    return matchesSearch && matchesStatus
-  })
+      switch (filter.operator) {
+        case 'equals':
+          return value === filter.value
+        case 'contains':
+          return typeof value === 'string' && value.toLowerCase().includes(filter.value.toLowerCase())
+        case 'greater_than':
+          return typeof value === 'number' && value > filter.value
+        case 'less_than':
+          return typeof value === 'number' && value < filter.value
+        case 'between':
+          return typeof value === 'number' && value >= filter.value[0] && value <= filter.value[1]
+        default:
+          return true
+      }
+    })
+  }
+
+  const filteredContacts = useMemo(() => {
+    return contacts.filter((contact) => {
+      const matchesSearch =
+        contact.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        contact.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        contact.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        contact.phone.includes(searchTerm)
+
+      const matchesStatus = selectedStatus === "all" || contact.status === selectedStatus
+      const matchesAdvancedFilters = applyAdvancedFilters(contact, activeFilters)
+
+      return matchesSearch && matchesStatus && matchesAdvancedFilters
+    })
+  }, [contacts, searchTerm, selectedStatus, activeFilters])
+
+  const handleFiltersChange = (filters: any[]) => {
+    setActiveFilters(filters)
+  }
+
+  const handleSegmentSelect = (segment: any) => {
+    setSelectedSegment(segment)
+    setActiveFilters(segment.conditions)
+    setShowAdvancedFilters(false)
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -116,7 +159,31 @@ export default function ContactsPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Contacts</h1>
-            <p className="text-muted-foreground">Manage your customer relationships</p>
+            <p className="text-muted-foreground">
+              Manage your customer relationships
+              {selectedSegment && (
+                <span className="ml-2">
+                  • Viewing segment: <Badge variant="secondary">{selectedSegment.name}</Badge>
+                </span>
+              )}
+              {activeFilters.length > 0 && (
+                <span className="ml-2">
+                  • {activeFilters.length} filter{activeFilters.length > 1 ? 's' : ''} applied
+                </span>
+              )}
+            </p>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button variant="outline" size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Contact
+            </Button>
+            <Button variant="outline" size="sm">
+              Import
+            </Button>
+            <Button variant="outline" size="sm">
+              Export
+            </Button>
           </div>
         </div>
 
@@ -124,10 +191,17 @@ export default function ContactsPage() {
         <div className="grid gap-6 md:grid-cols-4">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Total Contacts</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                {activeFilters.length > 0 ? 'Filtered Contacts' : 'Total Contacts'}
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{contacts.length}</div>
+              <div className="text-2xl font-bold">{filteredContacts.length}</div>
+              {activeFilters.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  of {contacts.length} total
+                </p>
+              )}
             </CardContent>
           </Card>
           <Card>
@@ -135,7 +209,7 @@ export default function ContactsPage() {
               <CardTitle className="text-sm font-medium">Customers</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{contacts.filter((c) => c.status === "customer").length}</div>
+              <div className="text-2xl font-bold">{filteredContacts.filter((c) => c.status === "customer").length}</div>
             </CardContent>
           </Card>
           <Card>
@@ -143,7 +217,7 @@ export default function ContactsPage() {
               <CardTitle className="text-sm font-medium">Prospects</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{contacts.filter((c) => c.status === "prospect").length}</div>
+              <div className="text-2xl font-bold">{filteredContacts.filter((c) => c.status === "prospect").length}</div>
             </CardContent>
           </Card>
           <Card>
@@ -151,10 +225,41 @@ export default function ContactsPage() {
               <CardTitle className="text-sm font-medium">Leads</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{contacts.filter((c) => c.status === "lead").length}</div>
+              <div className="text-2xl font-bold">{filteredContacts.filter((c) => c.status === "lead").length}</div>
             </CardContent>
           </Card>
         </div>
+
+        {/* Advanced Filters */}
+        <Collapsible open={showAdvancedFilters} onOpenChange={setShowAdvancedFilters}>
+          <CollapsibleTrigger asChild>
+            <Card className="cursor-pointer hover:shadow-md transition-shadow">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Sliders className="h-5 w-5" />
+                    <CardTitle>Advanced Filters & Segments</CardTitle>
+                    {activeFilters.length > 0 && (
+                      <Badge variant="secondary">
+                        {activeFilters.length} active
+                      </Badge>
+                    )}
+                  </div>
+                  <Button variant="ghost" size="sm">
+                    {showAdvancedFilters ? 'Hide' : 'Show'} Filters
+                  </Button>
+                </div>
+              </CardHeader>
+            </Card>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <AdvancedFilters
+              onFiltersChange={handleFiltersChange}
+              onSegmentSelect={handleSegmentSelect}
+              contacts={contacts}
+            />
+          </CollapsibleContent>
+        </Collapsible>
 
         {/* Filters and Search */}
         <Card>
