@@ -813,6 +813,17 @@ export function VisualFlowBuilder() {
                 </div>
               </div>
             </TabsContent>
+
+            <TabsContent value="integrations" className="space-y-4 mt-4">
+              <div>
+                <h3 className="font-medium text-sm text-red-700 mb-2">Integrations</h3>
+                <div className="space-y-2">
+                  {nodeTemplates.integrations.map((template) => (
+                    <DraggableNode key={template.id} template={template} />
+                  ))}
+                </div>
+              </div>
+            </TabsContent>
           </Tabs>
         </motion.div>
 
