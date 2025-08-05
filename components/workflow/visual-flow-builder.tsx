@@ -431,20 +431,65 @@ function DraggableNode({ template }: { template: any }) {
   )
 }
 
-// Node configuration schemas
+// Enhanced node configuration schemas
 const emailConfigSchema = z.object({
   subject: z.string().min(1, "Subject is required"),
   content: z.string().min(1, "Content is required"),
   fromEmail: z.string().email("Valid email required").optional(),
+  template: z.string().optional(),
 })
 
 const smsConfigSchema = z.object({
   message: z.string().min(1, "Message is required").max(160, "Message must be 160 characters or less"),
+  sender: z.string().optional(),
+})
+
+const whatsappConfigSchema = z.object({
+  message: z.string().min(1, "Message is required"),
+  template: z.string().optional(),
 })
 
 const waitConfigSchema = z.object({
   duration: z.number().min(1, "Duration must be at least 1"),
   unit: z.enum(["minutes", "hours", "days", "weeks"]),
+})
+
+const tagConfigSchema = z.object({
+  tagName: z.string().min(1, "Tag name is required"),
+  action: z.enum(["add", "remove"]),
+})
+
+const dealConfigSchema = z.object({
+  dealName: z.string().min(1, "Deal name is required"),
+  value: z.number().min(0, "Deal value must be positive"),
+  stage: z.string().min(1, "Stage is required"),
+  assignedTo: z.string().optional(),
+})
+
+const taskConfigSchema = z.object({
+  title: z.string().min(1, "Task title is required"),
+  description: z.string().optional(),
+  dueDate: z.string().optional(),
+  assignedTo: z.string().optional(),
+  priority: z.enum(["low", "medium", "high"]),
+})
+
+const webhookConfigSchema = z.object({
+  url: z.string().url("Valid URL is required"),
+  method: z.enum(["GET", "POST", "PUT", "DELETE"]),
+  headers: z.string().optional(),
+  payload: z.string().optional(),
+})
+
+const conditionConfigSchema = z.object({
+  field: z.string().min(1, "Field is required"),
+  operator: z.enum(["equals", "not_equals", "contains", "greater_than", "less_than"]),
+  value: z.string().min(1, "Value is required"),
+})
+
+const integrationConfigSchema = z.object({
+  action: z.string().min(1, "Action is required"),
+  settings: z.record(z.any()).optional(),
 })
 
 // Node configuration modal
