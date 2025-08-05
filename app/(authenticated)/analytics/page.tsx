@@ -414,6 +414,10 @@ export default function AnalyticsPage() {
               </Card>
             </div>
           </TabsContent>
+
+          <TabsContent value="reports" className="space-y-6">
+            <AdvancedReports />
+          </TabsContent>
         </Tabs>
       </div>
     </MainLayout>
