@@ -159,7 +159,31 @@ export default function ContactsPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Contacts</h1>
-            <p className="text-muted-foreground">Manage your customer relationships</p>
+            <p className="text-muted-foreground">
+              Manage your customer relationships
+              {selectedSegment && (
+                <span className="ml-2">
+                  • Viewing segment: <Badge variant="secondary">{selectedSegment.name}</Badge>
+                </span>
+              )}
+              {activeFilters.length > 0 && (
+                <span className="ml-2">
+                  • {activeFilters.length} filter{activeFilters.length > 1 ? 's' : ''} applied
+                </span>
+              )}
+            </p>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button variant="outline" size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Contact
+            </Button>
+            <Button variant="outline" size="sm">
+              Import
+            </Button>
+            <Button variant="outline" size="sm">
+              Export
+            </Button>
           </div>
         </div>
 
