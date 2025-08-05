@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from "react"
-import { Plus, Search, Filter, MoreHorizontal, Mail, Phone, MessageSquare, Edit, Trash2, Star, Tag } from "lucide-react"
+import { useState, useMemo } from "react"
+import { Plus, Search, Filter, MoreHorizontal, Mail, Phone, MessageSquare, Edit, Trash2, Star, Tag, Users, Sliders } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { AdvancedFilters } from "@/components/contacts/advanced-filters"
 
 import type { Contact } from "@/types"
 
