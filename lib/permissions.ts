@@ -1,7 +1,7 @@
 import type { UserRole, Resource, Action, Permission } from "@/types"
 
 export const DEFAULT_PERMISSIONS: Record<UserRole, Permission[]> = {
-  admin: [
+  ADMIN: [
     {
       resource: "contacts",
       actions: ["create", "read", "update", "delete", "assign", "export"],
@@ -39,7 +39,7 @@ export const DEFAULT_PERMISSIONS: Record<UserRole, Permission[]> = {
       actions: ["create", "read", "update", "delete"],
     },
   ],
-  manager: [
+  MANAGER: [
     {
       resource: "contacts",
       actions: ["create", "read", "update", "assign", "export"],
@@ -73,7 +73,7 @@ export const DEFAULT_PERMISSIONS: Record<UserRole, Permission[]> = {
       actions: ["read"],
     },
   ],
-  agent: [
+  AGENT: [
     {
       resource: "contacts",
       actions: ["create", "read", "update"],

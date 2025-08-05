@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useAuth } from "@/hooks/use-auth"
 import { AppSidebar } from "@/components/layout/app-sidebar"
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
@@ -12,20 +12,37 @@ export default function AuthenticatedLayout({
 }: {
   children: React.ReactNode
 }) {
-  const { isAuthenticated, needsOnboarding } = useAuth()
+  const { isAuthenticated, needsOnboarding, isLoading } = useAuth()
   const router = useRouter()
+  const [isClient, setIsClient] = useState(false)
+
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
 
   // Redirect to login if not authenticated
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/auth/login')
-    } else if (needsOnboarding) {
-      router.push('/onboarding')
+    if (!isLoading && isClient) {
+      if (!isAuthenticated) {
+        router.push('/auth/login')
+      } else if (needsOnboarding) {
+        router.push('/onboarding')
+      }
     }
-  }, [isAuthenticated, needsOnboarding, router])
+  }, [isAuthenticated, needsOnboarding, isLoading, router, isClient])
 
+  // Show loading state while checking auth
+  if (isLoading || !isClient) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    )
+  }
+
+  // If not authenticated, don't render anything (redirect will happen)
   if (!isAuthenticated) {
-    return null // or a loading spinner
+    return null
   }
 
   return (
