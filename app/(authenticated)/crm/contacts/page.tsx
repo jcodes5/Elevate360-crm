@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { AddContactModal } from "@/components/modals/add-contact-modal"
+import { useToast } from "@/components/ui/use-toast"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,7 +48,7 @@ const mockContacts: Contact[] = [
     whatsappNumber: "+2348087654321",
     tags: ["Prospect", "Abuja"],
     leadScore: 72,
-    status: "prospect",
+    status: "PROSPECT",
     source: "Social Media",
     assignedTo: "agent-2",
     organizationId: "org-1",
@@ -76,6 +78,9 @@ export default function ContactsPage() {
   const [contacts, setContacts] = useState(mockContacts)
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedStatus, setSelectedStatus] = useState<string>("all")
+  const [showCreateCampaign, setShowCreateCampaign] = useState(false)
+  const [showAddContact, setShowAddContact] = useState(false)
+  const { toast } = useToast()
 
   const filteredContacts = contacts.filter((contact) => {
     const matchesSearch =
@@ -118,6 +123,12 @@ export default function ContactsPage() {
             <h1 className="text-3xl font-bold tracking-tight">Contacts</h1>
             <p className="text-muted-foreground">Manage your customer relationships</p>
           </div>
+          <div className="items-center space-x-2">
+            <Button onClick={() => setShowAddContact(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Contact
+              </Button>
+              </div>
         </div>
 
         {/* Stats Cards */}
@@ -308,6 +319,8 @@ export default function ContactsPage() {
             </Table>
           </CardContent>
         </Card>
+        <AddContactModal open={showAddContact} onOpenChange={setShowAddContact} />
       </div>
+      
   )
 }
