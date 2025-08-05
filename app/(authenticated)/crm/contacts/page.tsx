@@ -230,6 +230,37 @@ export default function ContactsPage() {
           </Card>
         </div>
 
+        {/* Advanced Filters */}
+        <Collapsible open={showAdvancedFilters} onOpenChange={setShowAdvancedFilters}>
+          <CollapsibleTrigger asChild>
+            <Card className="cursor-pointer hover:shadow-md transition-shadow">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Sliders className="h-5 w-5" />
+                    <CardTitle>Advanced Filters & Segments</CardTitle>
+                    {activeFilters.length > 0 && (
+                      <Badge variant="secondary">
+                        {activeFilters.length} active
+                      </Badge>
+                    )}
+                  </div>
+                  <Button variant="ghost" size="sm">
+                    {showAdvancedFilters ? 'Hide' : 'Show'} Filters
+                  </Button>
+                </div>
+              </CardHeader>
+            </Card>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <AdvancedFilters
+              onFiltersChange={handleFiltersChange}
+              onSegmentSelect={handleSegmentSelect}
+              contacts={contacts}
+            />
+          </CollapsibleContent>
+        </Collapsible>
+
         {/* Filters and Search */}
         <Card>
           <CardHeader>
