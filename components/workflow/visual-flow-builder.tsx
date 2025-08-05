@@ -500,8 +500,35 @@ function NodeConfigModal({ node, isOpen, onClose, onSave }: any) {
         return emailConfigSchema
       case "send_sms":
         return smsConfigSchema
+      case "send_whatsapp":
+        return whatsappConfigSchema
       case "wait":
+      case "wait_until":
+      case "business_hours":
         return waitConfigSchema
+      case "add_tag":
+      case "remove_tag":
+        return tagConfigSchema
+      case "create_deal":
+      case "update_deal":
+        return dealConfigSchema
+      case "create_task":
+        return taskConfigSchema
+      case "call_webhook":
+        return webhookConfigSchema
+      case "if_condition":
+      case "has_tag":
+      case "field_value":
+      case "deal_value":
+      case "engagement_score":
+      case "time_condition":
+      case "campaign_status":
+        return conditionConfigSchema
+      case "google_sheets":
+      case "slack_message":
+      case "zapier_trigger":
+      case "calendly_booking":
+        return integrationConfigSchema
       default:
         return z.object({})
     }
