@@ -110,6 +110,16 @@ export default function AnalyticsPage() {
             </TabsTrigger>
           </TabsList>
 
+          <TabsContent value="dashboard" className="space-y-6">
+            <DashboardOverview
+              timeRange={timeRange}
+              onExport={(format) => {
+                // Handle export from dashboard
+                console.log(`Exporting dashboard as ${format}`)
+              }}
+            />
+          </TabsContent>
+
           <TabsContent value="overview" className="space-y-6">
             {/* Key Metrics */}
             <div className="grid gap-6 md:grid-cols-4">
