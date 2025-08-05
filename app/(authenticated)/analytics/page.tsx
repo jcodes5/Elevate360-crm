@@ -1,12 +1,16 @@
 "use client"
 
 import { useState } from "react"
-import { TrendingUp, Users, DollarSign, Mail, MessageSquare, Phone, Target } from "lucide-react"
+import { TrendingUp, Users, DollarSign, Mail, MessageSquare, Phone, Target, BarChart3, FileText, TrendingDown } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Button } from "@/components/ui/button"
 import { MainLayout } from "@/components/layout/main-layout"
 import { formatCurrency } from "@/lib/utils"
+import { DashboardOverview } from "@/components/analytics/dashboard-overview"
+import { AdvancedReports } from "@/components/analytics/advanced-reports"
+import { ExportManager } from "@/components/analytics/export-manager"
 import {
   LineChart,
   Line,
