@@ -573,6 +573,19 @@ function NodeConfigModal({ node, isOpen, onClose, onSave }: any) {
               <Label htmlFor="fromEmail">From Email (Optional)</Label>
               <Input id="fromEmail" type="email" {...form.register("fromEmail")} placeholder="sender@yourcompany.com" />
             </div>
+            <div>
+              <Label htmlFor="template">Template (Optional)</Label>
+              <Select onValueChange={(value) => form.setValue("template", value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a template" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="welcome">Welcome Email</SelectItem>
+                  <SelectItem value="followup">Follow-up Email</SelectItem>
+                  <SelectItem value="reminder">Reminder Email</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         )
 
@@ -598,10 +611,256 @@ function NodeConfigModal({ node, isOpen, onClose, onSave }: any) {
                 </div>
               </div>
             </div>
+            <div>
+              <Label htmlFor="sender">Sender ID (Optional)</Label>
+              <Input id="sender" {...form.register("sender")} placeholder="Your Company" />
+            </div>
+          </div>
+        )
+
+      case "send_whatsapp":
+        return (
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="message">WhatsApp Message</Label>
+              <Textarea
+                id="message"
+                {...form.register("message")}
+                placeholder="Enter WhatsApp message"
+                rows={4}
+              />
+              {form.formState.errors.message && (
+                <p className="text-red-500 text-sm mt-1">{form.formState.errors.message.message}</p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="template">Template (Optional)</Label>
+              <Select onValueChange={(value) => form.setValue("template", value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a template" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="greeting">Greeting Template</SelectItem>
+                  <SelectItem value="promotion">Promotion Template</SelectItem>
+                  <SelectItem value="support">Support Template</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        )
+
+      case "add_tag":
+      case "remove_tag":
+        return (
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="tagName">Tag Name</Label>
+              <Input id="tagName" {...form.register("tagName")} placeholder="Enter tag name" />
+              {form.formState.errors.tagName && (
+                <p className="text-red-500 text-sm mt-1">{form.formState.errors.tagName.message}</p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="action">Action</Label>
+              <Select
+                value={form.watch("action") || (node.data.template?.id === "add_tag" ? "add" : "remove")}
+                onValueChange={(value) => form.setValue("action", value as any)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="add">Add Tag</SelectItem>
+                  <SelectItem value="remove">Remove Tag</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        )
+
+      case "create_deal":
+      case "update_deal":
+        return (
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="dealName">Deal Name</Label>
+              <Input id="dealName" {...form.register("dealName")} placeholder="Enter deal name" />
+              {form.formState.errors.dealName && (
+                <p className="text-red-500 text-sm mt-1">{form.formState.errors.dealName.message}</p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="value">Deal Value</Label>
+              <Input
+                id="value"
+                type="number"
+                {...form.register("value", { valueAsNumber: true })}
+                placeholder="0"
+                min="0"
+              />
+              {form.formState.errors.value && (
+                <p className="text-red-500 text-sm mt-1">{form.formState.errors.value.message}</p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="stage">Stage</Label>
+              <Select onValueChange={(value) => form.setValue("stage", value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select stage" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="lead">Lead</SelectItem>
+                  <SelectItem value="qualified">Qualified</SelectItem>
+                  <SelectItem value="proposal">Proposal</SelectItem>
+                  <SelectItem value="negotiation">Negotiation</SelectItem>
+                  <SelectItem value="closed_won">Closed Won</SelectItem>
+                  <SelectItem value="closed_lost">Closed Lost</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="assignedTo">Assigned To (Optional)</Label>
+              <Input id="assignedTo" {...form.register("assignedTo")} placeholder="User ID or email" />
+            </div>
+          </div>
+        )
+
+      case "create_task":
+        return (
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="title">Task Title</Label>
+              <Input id="title" {...form.register("title")} placeholder="Enter task title" />
+              {form.formState.errors.title && (
+                <p className="text-red-500 text-sm mt-1">{form.formState.errors.title.message}</p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="description">Description (Optional)</Label>
+              <Textarea id="description" {...form.register("description")} placeholder="Task description" rows={3} />
+            </div>
+            <div>
+              <Label htmlFor="dueDate">Due Date (Optional)</Label>
+              <Input id="dueDate" type="date" {...form.register("dueDate")} />
+            </div>
+            <div>
+              <Label htmlFor="assignedTo">Assigned To (Optional)</Label>
+              <Input id="assignedTo" {...form.register("assignedTo")} placeholder="User ID or email" />
+            </div>
+            <div>
+              <Label htmlFor="priority">Priority</Label>
+              <Select
+                value={form.watch("priority") || "medium"}
+                onValueChange={(value) => form.setValue("priority", value as any)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        )
+
+      case "call_webhook":
+        return (
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="url">Webhook URL</Label>
+              <Input id="url" {...form.register("url")} placeholder="https://api.example.com/webhook" />
+              {form.formState.errors.url && (
+                <p className="text-red-500 text-sm mt-1">{form.formState.errors.url.message}</p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="method">HTTP Method</Label>
+              <Select
+                value={form.watch("method") || "POST"}
+                onValueChange={(value) => form.setValue("method", value as any)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="GET">GET</SelectItem>
+                  <SelectItem value="POST">POST</SelectItem>
+                  <SelectItem value="PUT">PUT</SelectItem>
+                  <SelectItem value="DELETE">DELETE</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="headers">Headers (Optional)</Label>
+              <Textarea
+                id="headers"
+                {...form.register("headers")}
+                placeholder='{"Content-Type": "application/json"}'
+                rows={3}
+              />
+            </div>
+            <div>
+              <Label htmlFor="payload">Payload (Optional)</Label>
+              <Textarea
+                id="payload"
+                {...form.register("payload")}
+                placeholder='{"key": "value"}'
+                rows={4}
+              />
+            </div>
+          </div>
+        )
+
+      case "if_condition":
+      case "has_tag":
+      case "field_value":
+      case "deal_value":
+      case "engagement_score":
+      case "time_condition":
+      case "campaign_status":
+        return (
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="field">Field/Property</Label>
+              <Input id="field" {...form.register("field")} placeholder="Enter field name" />
+              {form.formState.errors.field && (
+                <p className="text-red-500 text-sm mt-1">{form.formState.errors.field.message}</p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="operator">Operator</Label>
+              <Select
+                value={form.watch("operator") || "equals"}
+                onValueChange={(value) => form.setValue("operator", value as any)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="equals">Equals</SelectItem>
+                  <SelectItem value="not_equals">Not Equals</SelectItem>
+                  <SelectItem value="contains">Contains</SelectItem>
+                  <SelectItem value="greater_than">Greater Than</SelectItem>
+                  <SelectItem value="less_than">Less Than</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="value">Value</Label>
+              <Input id="value" {...form.register("value")} placeholder="Enter comparison value" />
+              {form.formState.errors.value && (
+                <p className="text-red-500 text-sm mt-1">{form.formState.errors.value.message}</p>
+              )}
+            </div>
           </div>
         )
 
       case "wait":
+      case "wait_until":
+      case "business_hours":
         return (
           <div className="space-y-4">
             <div>
@@ -633,6 +892,33 @@ function NodeConfigModal({ node, isOpen, onClose, onSave }: any) {
                   <SelectItem value="weeks">Weeks</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+          </div>
+        )
+
+      case "google_sheets":
+      case "slack_message":
+      case "zapier_trigger":
+      case "calendly_booking":
+        return (
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="action">Action</Label>
+              <Input id="action" {...form.register("action")} placeholder="Specify the action to perform" />
+              {form.formState.errors.action && (
+                <p className="text-red-500 text-sm mt-1">{form.formState.errors.action.message}</p>
+              )}
+            </div>
+            <div>
+              <Label>Integration Settings</Label>
+              <Textarea
+                {...form.register("settings")}
+                placeholder='{"key": "value"}'
+                rows={4}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Configure integration-specific settings as JSON
+              </p>
             </div>
           </div>
         )
