@@ -78,18 +78,59 @@ export default function ContactsPage() {
   const [contacts, setContacts] = useState(mockContacts)
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedStatus, setSelectedStatus] = useState<string>("all")
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
+  const [activeFilters, setActiveFilters] = useState<any[]>([])
+  const [selectedSegment, setSelectedSegment] = useState<any>(null)
 
-  const filteredContacts = contacts.filter((contact) => {
-    const matchesSearch =
-      contact.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contact.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contact.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contact.phone.includes(searchTerm)
+  // Apply advanced filters logic
+  const applyAdvancedFilters = (contact: Contact, filters: any[]) => {
+    if (filters.length === 0) return true
 
-    const matchesStatus = selectedStatus === "all" || contact.status === selectedStatus
+    // Simple implementation - in real app this would be more sophisticated
+    return filters.every(filter => {
+      const value = contact[filter.field as keyof Contact]
 
-    return matchesSearch && matchesStatus
-  })
+      switch (filter.operator) {
+        case 'equals':
+          return value === filter.value
+        case 'contains':
+          return typeof value === 'string' && value.toLowerCase().includes(filter.value.toLowerCase())
+        case 'greater_than':
+          return typeof value === 'number' && value > filter.value
+        case 'less_than':
+          return typeof value === 'number' && value < filter.value
+        case 'between':
+          return typeof value === 'number' && value >= filter.value[0] && value <= filter.value[1]
+        default:
+          return true
+      }
+    })
+  }
+
+  const filteredContacts = useMemo(() => {
+    return contacts.filter((contact) => {
+      const matchesSearch =
+        contact.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        contact.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        contact.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        contact.phone.includes(searchTerm)
+
+      const matchesStatus = selectedStatus === "all" || contact.status === selectedStatus
+      const matchesAdvancedFilters = applyAdvancedFilters(contact, activeFilters)
+
+      return matchesSearch && matchesStatus && matchesAdvancedFilters
+    })
+  }, [contacts, searchTerm, selectedStatus, activeFilters])
+
+  const handleFiltersChange = (filters: any[]) => {
+    setActiveFilters(filters)
+  }
+
+  const handleSegmentSelect = (segment: any) => {
+    setSelectedSegment(segment)
+    setActiveFilters(segment.conditions)
+    setShowAdvancedFilters(false)
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
