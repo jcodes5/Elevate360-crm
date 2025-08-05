@@ -191,10 +191,17 @@ export default function ContactsPage() {
         <div className="grid gap-6 md:grid-cols-4">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Total Contacts</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                {activeFilters.length > 0 ? 'Filtered Contacts' : 'Total Contacts'}
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{contacts.length}</div>
+              <div className="text-2xl font-bold">{filteredContacts.length}</div>
+              {activeFilters.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  of {contacts.length} total
+                </p>
+              )}
             </CardContent>
           </Card>
           <Card>
@@ -202,7 +209,7 @@ export default function ContactsPage() {
               <CardTitle className="text-sm font-medium">Customers</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{contacts.filter((c) => c.status === "customer").length}</div>
+              <div className="text-2xl font-bold">{filteredContacts.filter((c) => c.status === "customer").length}</div>
             </CardContent>
           </Card>
           <Card>
@@ -210,7 +217,7 @@ export default function ContactsPage() {
               <CardTitle className="text-sm font-medium">Prospects</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{contacts.filter((c) => c.status === "prospect").length}</div>
+              <div className="text-2xl font-bold">{filteredContacts.filter((c) => c.status === "prospect").length}</div>
             </CardContent>
           </Card>
           <Card>
@@ -218,7 +225,7 @@ export default function ContactsPage() {
               <CardTitle className="text-sm font-medium">Leads</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{contacts.filter((c) => c.status === "lead").length}</div>
+              <div className="text-2xl font-bold">{filteredContacts.filter((c) => c.status === "lead").length}</div>
             </CardContent>
           </Card>
         </div>
