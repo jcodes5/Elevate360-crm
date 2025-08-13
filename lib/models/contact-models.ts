@@ -396,3 +396,83 @@ export interface ContactStats {
   conversionRate: number
   newThisMonth: number
 }
+
+// Enhanced Contact Dashboard Data
+export interface ContactDashboardData {
+  // Overview metrics
+  total: number
+  newToday: number
+  newThisWeek: number
+  newThisMonth: number
+  newThisYear: number
+  
+  // Status breakdown
+  byStatus: Record<ContactStatus, number> & {
+    lead: number
+    prospect: number
+    customer: number
+    inactive: number
+    lost: number
+  }
+  
+  // Source breakdown
+  bySource: Record<string, number>
+  topSources: Array<{
+    source: string
+    count: number
+  }>
+  
+  // Lead scoring
+  averageLeadScore: number
+  leadScoreDistribution: {
+    min: number
+    max: number
+    average: number
+  }
+  
+  // Engagement metrics
+  engagement: {
+    withActiveDeals: number
+    withPendingTasks: number
+    recentActivity: number
+    activeLast30Days: number
+    activeLast7Days: number
+    neverContacted: number
+  }
+  
+  // Conversion metrics
+  conversion: {
+    leadToProspect: number
+    prospectToCustomer: number
+    overall: number
+  }
+  
+  // Growth metrics
+  growth: {
+    weekly: {
+      current: number
+      previous: number
+      growth: number
+      growthRate: number
+    }
+    monthly: {
+      current: number
+      previous: number
+      growth: number
+      growthRate: number
+    }
+  }
+  
+  // Assignment metrics
+  byAssignedUser: Array<{
+    userId: string
+    count: number
+  }>
+  
+  // Calculated percentages
+  percentages: {
+    customers: number
+    prospects: number
+    leads: number
+  }
+}

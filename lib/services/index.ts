@@ -1,11 +1,13 @@
-// CRM Services - Master Export File
-// Comprehensive collection of all CRM service modules
-
+// Services - Master Export File
+export * from './analytics-service'
+export * from './campaign-service'
 export * from './contact-service'
 export * from './deal-service'
-export * from './campaign-service'
 export * from './task-service'
-export * from './analytics-service'
+export * from './workflow-execution-service'
+export * from './workflow-execution-db-service'
+export * from './workflow-trigger-service'
+export * from './workflow-scheduler-service'
 
 // Base Service Class
 export abstract class BaseService {

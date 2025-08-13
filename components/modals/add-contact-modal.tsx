@@ -20,6 +20,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { X } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { ContactService } from "@/services/contact-service"
+import type { ContactStatus } from "@/types"
 
 const contactSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -29,8 +31,8 @@ const contactSchema = z.object({
   company: z.string().optional(),
   position: z.string().optional(),
   notes: z.string().optional(),
-  tags: z.array(z.string()).default([]),
-  status: z.enum(["active", "inactive", "prospect"]).default("prospect"),
+  tags: z.array(z.string()),
+  status: z.enum(["LEAD", "PROSPECT", "customer", "inactive", "lost"]),
 })
 
 type ContactFormData = z.infer<typeof contactSchema>
@@ -55,7 +57,7 @@ export function AddContactModal({ open, onOpenChange }: AddContactModalProps) {
       position: "",
       notes: "",
       tags: [],
-      status: "prospect",
+      status: "PROSPECT",
     },
   })
 
@@ -75,14 +77,36 @@ export function AddContactModal({ open, onOpenChange }: AddContactModalProps) {
     )
   }
 
-  const onSubmit = (data: ContactFormData) => {
-    console.log("Contact data:", data)
-    toast({
-      title: "Contact Added",
-      description: `${data.firstName} ${data.lastName} has been added to your contacts.`,
-    })
-    onOpenChange(false)
-    form.reset()
+  const onSubmit = async (data: ContactFormData) => {
+    console.log("Form submitted with data:", data);
+    try {
+      await ContactService.createContact({
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        phone: data.phone,
+        company: data.company,
+        position: data.position,
+        tags: data.tags,
+        status: data.status,
+        notes: data.notes,
+      })
+
+      toast({
+        title: "Contact Added",
+        description: `${data.firstName} ${data.lastName} has been added to your contacts.`,
+      })
+      
+      onOpenChange(false)
+      form.reset()
+    } catch (error) {
+      console.error("Error in form submission:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add contact. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
   return (
@@ -187,16 +211,18 @@ export function AddContactModal({ open, onOpenChange }: AddContactModalProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Status</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select status" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="prospect">Prospect</SelectItem>
-                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="LEAD">Lead</SelectItem>
+                      <SelectItem value="PROSPECT">Prospect</SelectItem>
+                      <SelectItem value="customer">Customer</SelectItem>
                       <SelectItem value="inactive">Inactive</SelectItem>
+                      <SelectItem value="lost">Lost</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -228,7 +254,7 @@ export function AddContactModal({ open, onOpenChange }: AddContactModalProps) {
                       </Button>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      {tags.map((tag) => (
+                      {field.value.map((tag) => (
                         <Badge key={tag} variant="secondary" className="flex items-center gap-1">
                           {tag}
                           <X className="h-3 w-3 cursor-pointer" onClick={() => removeTag(tag)} />

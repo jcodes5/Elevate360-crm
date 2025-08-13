@@ -32,6 +32,7 @@ import {
   Zap,
   Target,
   Settings,
+  DollarSign,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -633,7 +634,7 @@ function NodeConfigModal({ node, isOpen, onClose, onSave }: any) {
                 rows={4}
               />
               {form.formState.errors.message && (
-                <p className="text-red-500 text-sm mt-1">{form.formState.errors.message.message}</p>
+                <p className="text-red-500 text-sm mt-1">{form.formState.errors.message?.message?.toString()}</p>
               )}
             </div>
             <div>
@@ -660,7 +661,7 @@ function NodeConfigModal({ node, isOpen, onClose, onSave }: any) {
               <Label htmlFor="tagName">Tag Name</Label>
               <Input id="tagName" {...form.register("tagName")} placeholder="Enter tag name" />
               {form.formState.errors.tagName && (
-                <p className="text-red-500 text-sm mt-1">{form.formState.errors.tagName.message}</p>
+                <p className="text-red-500 text-sm mt-1">{form.formState.errors.tagName?.message?.toString()}</p>
               )}
             </div>
             <div>
@@ -689,7 +690,7 @@ function NodeConfigModal({ node, isOpen, onClose, onSave }: any) {
               <Label htmlFor="dealName">Deal Name</Label>
               <Input id="dealName" {...form.register("dealName")} placeholder="Enter deal name" />
               {form.formState.errors.dealName && (
-                <p className="text-red-500 text-sm mt-1">{form.formState.errors.dealName.message}</p>
+                <p className="text-red-500 text-sm mt-1">{form.formState.errors.dealName?.message?.toString()}</p>
               )}
             </div>
             <div>
@@ -702,7 +703,7 @@ function NodeConfigModal({ node, isOpen, onClose, onSave }: any) {
                 min="0"
               />
               {form.formState.errors.value && (
-                <p className="text-red-500 text-sm mt-1">{form.formState.errors.value.message}</p>
+                <p className="text-red-500 text-sm mt-1">{form.formState.errors.value?.message?.toString()}</p>
               )}
             </div>
             <div>
@@ -735,7 +736,7 @@ function NodeConfigModal({ node, isOpen, onClose, onSave }: any) {
               <Label htmlFor="title">Task Title</Label>
               <Input id="title" {...form.register("title")} placeholder="Enter task title" />
               {form.formState.errors.title && (
-                <p className="text-red-500 text-sm mt-1">{form.formState.errors.title.message}</p>
+                <p className="text-red-500 text-sm mt-1">{form.formState.errors.title?.message?.toString()}</p>
               )}
             </div>
             <div>
@@ -776,7 +777,7 @@ function NodeConfigModal({ node, isOpen, onClose, onSave }: any) {
               <Label htmlFor="url">Webhook URL</Label>
               <Input id="url" {...form.register("url")} placeholder="https://api.example.com/webhook" />
               {form.formState.errors.url && (
-                <p className="text-red-500 text-sm mt-1">{form.formState.errors.url.message}</p>
+                <p className="text-red-500 text-sm mt-1">{form.formState.errors.url?.message?.toString()}</p>
               )}
             </div>
             <div>
@@ -830,7 +831,7 @@ function NodeConfigModal({ node, isOpen, onClose, onSave }: any) {
               <Label htmlFor="field">Field/Property</Label>
               <Input id="field" {...form.register("field")} placeholder="Enter field name" />
               {form.formState.errors.field && (
-                <p className="text-red-500 text-sm mt-1">{form.formState.errors.field.message}</p>
+                <p className="text-red-500 text-sm mt-1">{form.formState.errors.field?.message?.toString()}</p>
               )}
             </div>
             <div>
@@ -855,7 +856,7 @@ function NodeConfigModal({ node, isOpen, onClose, onSave }: any) {
               <Label htmlFor="value">Value</Label>
               <Input id="value" {...form.register("value")} placeholder="Enter comparison value" />
               {form.formState.errors.value && (
-                <p className="text-red-500 text-sm mt-1">{form.formState.errors.value.message}</p>
+                <p className="text-red-500 text-sm mt-1">{form.formState.errors.value?.message?.toString()}</p>
               )}
             </div>
           </div>
@@ -909,7 +910,7 @@ function NodeConfigModal({ node, isOpen, onClose, onSave }: any) {
               <Label htmlFor="action">Action</Label>
               <Input id="action" {...form.register("action")} placeholder="Specify the action to perform" />
               {form.formState.errors.action && (
-                <p className="text-red-500 text-sm mt-1">{form.formState.errors.action.message}</p>
+                <p className="text-red-500 text-sm mt-1">{form.formState.errors.action?.message?.toString()}</p>
               )}
             </div>
             <div>
@@ -1182,26 +1183,13 @@ export function VisualFlowBuilder() {
           >
             <div className="p-4 border-b">
               <h2 className="text-lg font-semibold text-gray-900">Workflow Builder</h2>
-              <p className="text-sm text-gray-600">Drag components to cre
-          <Tabs defaultValue="triggers" className="p-4">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="triggers">Start</TabsTrigger>
-              <TabsTrigger value="actions">Actions</TabsTrigger>
-              <TabsTrigger value="integrations">Apps</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="triggers" className="space-y-4 mt-4">
-              <div>
-                <h3 className="font-medium text-sm text-green-700 mb-2">Triggers</h3>
-                <div className="space-y-2">
-                  {nodeTemplates.triggers.map((template) => (
-                    <DraggableNode key={template.id} template={template} />
-                  ))}
-
+              <p className="text-sm text-gray-600">Drag components to create your workflow</p>
+            </div>
             <Tabs defaultValue="triggers" className="p-4">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="triggers">Start</TabsTrigger>
                 <TabsTrigger value="actions">Actions</TabsTrigger>
+                <TabsTrigger value="integrations">Apps</TabsTrigger>
               </TabsList>
 
               <TabsContent value="triggers" className="space-y-4 mt-4">
@@ -1212,7 +1200,6 @@ export function VisualFlowBuilder() {
                       <DraggableNode key={template.id} template={template} />
                     ))}
                   </div>
-
                 </div>
 
                 <div>
@@ -1243,63 +1230,19 @@ export function VisualFlowBuilder() {
                     ))}
                   </div>
                 </div>
+              </TabsContent>
 
-              </div>
-            </TabsContent>
-
-            <TabsContent value="integrations" className="space-y-4 mt-4">
-              <div>
-                <h3 className="font-medium text-sm text-red-700 mb-2">Integrations</h3>
-                <div className="space-y-2">
-                  {nodeTemplates.integrations.map((template) => (
-                    <DraggableNode key={template.id} template={template} />
-                  ))}
+              <TabsContent value="integrations" className="space-y-4 mt-4">
+                <div>
+                  <h3 className="font-medium text-sm text-red-700 mb-2">Integrations</h3>
+                  <div className="space-y-2">
+                    {nodeTemplates.integrations.map((template) => (
+                      <DraggableNode key={template.id} template={template} />
+                    ))}
+                  </div>
                 </div>
-              </div>
-            </TabsContent>
-          </Tabs>
-        </motion.div>
-
-        {/* Main Canvas */}
-        <div className="flex-1 flex flex-col">
-          {/* Header */}
-          <motion.div initial={{ y: -50 }} animate={{ y: 0 }} className="bg-white border-b p-4 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <Input
-                  value={workflowName}
-                  onChange={(e) => setWorkflowName(e.target.value)}
-                  className="font-medium text-lg border-none p-0 focus:ring-0 bg-transparent"
-                  placeholder="Workflow Name"
-                />
-                <Badge variant="outline" className="text-xs">
-                  {nodes.length} nodes
-                </Badge>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleTestWorkflow}
-                  disabled={testWorkflowMutation.isPending || nodes.length === 0}
-                >
-                  <Play className="w-4 h-4 mr-2" />
-                  {testWorkflowMutation.isPending ? "Testing..." : "Test"}
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handleSaveWorkflow}
-                  disabled={saveWorkflowMutation.isPending || nodes.length === 0}
-                >
-                  <Save className="w-4 h-4 mr-2" />
-                  {saveWorkflowMutation.isPending ? "Saving..." : "Save"}
-                </Button>
-              </div>
-            </div>
-
               </TabsContent>
             </Tabs>
-
           </motion.div>
 
           {/* Main Canvas */}

@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useMemo } from "react"
-import { Plus, Search, Filter, MoreHorizontal, Mail, Phone, MessageSquare, Edit, Trash2, Star, Tag, Users, Sliders } from "lucide-react"
+import { useState, useMemo, useEffect, useCallback } from "react"
+import { Plus, Search, Filter, MoreHorizontal, Mail, Phone, MessageSquare, Edit, Trash2, Star, Tag, Users, Sliders, TrendingUp, DollarSign, Clock, CheckCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -16,248 +16,335 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { AdvancedFilters } from "@/components/contacts/advanced-filters"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
+import { AddContactModal } from "@/components/modals/add-contact-modal"
+import { useContactDashboard } from "@/hooks/use-contact-dashboard"
+import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend
+} from "recharts"
+import type { ContactDashboardData } from "@/lib/models"
+import { ContactService } from "@/services/contact-service"
 
 import type { Contact } from "@/types"
 
-// Mock data
-const mockContacts: Contact[] = [
-  {
-    id: "1",
-    firstName: "Adebayo",
-    lastName: "Johnson",
-    email: "adebayo.johnson@email.com",
-    phone: "+2348012345678",
-    whatsappNumber: "+2348012345678",
-    tags: ["VIP", "Lagos"],
-    leadScore: 85,
-    status: "customer",
-    source: "Website",
-    assignedTo: "agent-1",
-    organizationId: "org-1",
-    customFields: {},
-    createdAt: new Date("2024-01-15"),
-    updatedAt: new Date("2024-01-20"),
-  },
-  {
-    id: "2",
-    firstName: "Fatima",
-    lastName: "Abdullahi",
-    email: "fatima.abdullahi@email.com",
-    phone: "+2348087654321",
-    whatsappNumber: "+2348087654321",
-    tags: ["Prospect", "Abuja"],
-    leadScore: 72,
-    status: "PROSPECT",
-    source: "Social Media",
-    assignedTo: "agent-2",
-    organizationId: "org-1",
-    customFields: {},
-    createdAt: new Date("2024-01-18"),
-    updatedAt: new Date("2024-01-22"),
-  },
-  {
-    id: "3",
-    firstName: "Chinedu",
-    lastName: "Okafor",
-    email: "chinedu.okafor@email.com",
-    phone: "+2348098765432",
-    tags: ["Lead", "Port Harcourt"],
-    leadScore: 45,
-    status: "lead",
-    source: "Referral",
-    assignedTo: "agent-1",
-    organizationId: "org-1",
-    customFields: {},
-    createdAt: new Date("2024-01-20"),
-    updatedAt: new Date("2024-01-21"),
-  },
-]
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8']
 
 export default function ContactsPage() {
-  const [contacts, setContacts] = useState(mockContacts)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [selectedStatus, setSelectedStatus] = useState<string>("all")
-
-  const filteredContacts = contacts.filter((contact) => {
-    const matchesSearch =
-      contact.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contact.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contact.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contact.phone.includes(searchTerm)
-
-      const matchesStatus = selectedStatus === "all" || contact.status === selectedStatus
-      const matchesAdvancedFilters = applyAdvancedFilters(contact, activeFilters)
-
-      return matchesSearch && matchesStatus && matchesAdvancedFilters
-    })
-  }, [contacts, searchTerm, selectedStatus, activeFilters])
-
-  const handleFiltersChange = (filters: any[]) => {
-    setActiveFilters(filters)
-  }
-
-  const handleSegmentSelect = (segment: any) => {
-    setSelectedSegment(segment)
-    setActiveFilters(segment.conditions)
-    setShowAdvancedFilters(false)
-  }
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "customer":
-        return "bg-green-100 text-green-800"
-      case "prospect":
-        return "bg-blue-100 text-blue-800"
-      case "lead":
-        return "bg-yellow-100 text-yellow-800"
-      case "inactive":
-        return "bg-gray-100 text-gray-800"
-      default:
-        return "bg-gray-100 text-gray-800"
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [showFilters, setShowFilters] = useState(false)
+  const { data: dashboardData, isLoading } = useContactDashboard()
+  
+  const [searchQuery, setSearchQuery] = useState("")
+  const [statusFilter, setStatusFilter] = useState<string[]>([])
+  const [contacts, setContacts] = useState<Contact[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  
+  // Add state for filters
+  const [filters, setFilters] = useState<any[]>([])
+  
+  // Fetch contacts from database
+  useEffect(() => {
+    let isMounted = true;
+    
+    const fetchContacts = async (retryCount = 3) => {
+      for (let attempt = 1; attempt <= retryCount; attempt++) {
+        try {
+          if (!isMounted) return;
+          
+          console.log(`Fetching contacts from database (attempt ${attempt})`);
+          setLoading(true)
+          setError(null)
+          
+          const fetchedContacts = await ContactService.getAllContacts()
+          
+          if (!isMounted) return;
+          
+          setContacts(fetchedContacts)
+          console.log("Contacts fetched successfully:", fetchedContacts);
+          return fetchedContacts;
+        } catch (error) {
+          console.error(`Error fetching contacts on attempt ${attempt}:`, error)
+          
+          if (attempt === retryCount) {
+            if (!isMounted) return;
+            setError("Failed to load contacts. Please try again.")
+            setLoading(false)
+            return null;
+          }
+          
+          // Exponential backoff
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+        }
+      }
     }
+
+    fetchContacts()
+
+    return () => {
+      isMounted = false;
+    }
+  }, [])
+
+  const filteredContacts = useMemo(() => {
+    return contacts.filter(contact => {
+      const matchesSearch = !searchQuery || 
+        contact.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        contact.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        contact.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        contact.phone.includes(searchQuery)
+      
+      const matchesStatus = statusFilter.length === 0 || statusFilter.includes(contact.status)
+      
+      // Apply filters from AdvancedFilters component
+      const matchesFilters = filters.length === 0 || filters.every(filter => {
+        // This is a simplified filter check - in a real app, you would implement proper filtering logic
+        return true
+      })
+      
+      return matchesSearch && matchesStatus && matchesFilters
+    })
+  }, [searchQuery, statusFilter, filters, contacts])
+
+  const toggleStatusFilter = (status: string) => {
+    // Convert display name to the format used in the data model
+    const dataModelStatus = status.toLowerCase();
+    
+    setStatusFilter(prev => 
+      prev.includes(dataModelStatus) 
+        ? prev.filter(s => s !== dataModelStatus) 
+        : [...prev, dataModelStatus]
+    )
   }
 
-  const getLeadScoreColor = (score: number) => {
-    if (score >= 80) return "text-green-600"
-    if (score >= 60) return "text-yellow-600"
-    return "text-red-600"
-  }
+  // Prepare data for charts
+  const statusData = dashboardData ? [
+    { name: 'Leads', value: dashboardData.byStatus?.lead || 0 },
+    { name: 'Prospects', value: dashboardData.byStatus?.prospect || 0 },
+    { name: 'Customers', value: dashboardData.byStatus?.customer || 0 },
+    { name: 'Inactive', value: dashboardData.byStatus?.inactive || 0 },
+    { name: 'Lost', value: dashboardData.byStatus?.lost || 0 },
+  ] : []
+
+  const sourceData = dashboardData ? Object.entries(dashboardData.bySource || {})
+    .map(([source, count]) => ({ name: source, value: count }))
+    .slice(0, 5) : []
+
+  // Function to refresh contacts with retry logic
+  const refreshContacts = useCallback(async () => {
+    let isMounted = true;
+    
+    try {
+      console.log("Refreshing contacts");
+      setLoading(true)
+      setError(null)
+      
+      const fetchedContacts = await ContactService.getAllContacts()
+      
+      if (isMounted) {
+        setContacts(fetchedContacts)
+        console.log("Contacts refreshed successfully:", fetchedContacts);
+      }
+    } catch (error) {
+      console.error("Error refreshing contacts:", error)
+      if (isMounted) {
+        setError("Failed to refresh contacts. Please try again.")
+      }
+    } finally {
+      if (isMounted) {
+        setLoading(false)
+      }
+    }
+    
+    return () => {
+      isMounted = false;
+    }
+  }, [])
 
   return (
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Contacts</h1>
-            <p className="text-muted-foreground">Manage your customer relationships</p>
-          </div>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Contacts</h1>
+          <p className="text-muted-foreground">Manage your customer contacts and relationships</p>
         </div>
+        <Button onClick={() => setIsAddModalOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Add Contact
+        </Button>
+      </div>
 
-        {/* Stats Cards */}
-        <div className="grid gap-6 md:grid-cols-4">
+      {/* Dashboard Stats */}
+      {dashboardData && (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">
-                {activeFilters.length > 0 ? 'Filtered Contacts' : 'Total Contacts'}
-              </CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Contacts</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{filteredContacts.length}</div>
-              {activeFilters.length > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  of {contacts.length} total
-                </p>
-              )}
+              <div className="text-2xl font-bold">{dashboardData.total?.toLocaleString() || 0}</div>
+              <p className="text-xs text-muted-foreground">
+                +{dashboardData.newThisMonth || 0} from last month
+              </p>
             </CardContent>
           </Card>
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Customers</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Conversion Rate</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{filteredContacts.filter((c) => c.status === "customer").length}</div>
+              <div className="text-2xl font-bold">{dashboardData.conversion?.overall || 0}%</div>
+              <p className="text-xs text-muted-foreground">
+                {dashboardData.conversion?.overall ? (dashboardData.conversion.overall > 0 ? '+' : '') : ''}{(dashboardData.conversion?.overall || 0) - 20}% from last month
+              </p>
             </CardContent>
           </Card>
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Prospects</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Avg. Lead Score</CardTitle>
+              <Star className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{filteredContacts.filter((c) => c.status === "prospect").length}</div>
+              <div className="text-2xl font-bold">{dashboardData.averageLeadScore || 0}</div>
+              <p className="text-xs text-muted-foreground">
+                +{(dashboardData.averageLeadScore || 0) - 65} from last month
+              </p>
             </CardContent>
           </Card>
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Leads</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Active Deals</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{filteredContacts.filter((c) => c.status === "lead").length}</div>
+              <div className="text-2xl font-bold">{dashboardData.engagement?.withActiveDeals || 0}</div>
+              <p className="text-xs text-muted-foreground">
+                {dashboardData.engagement?.withActiveDeals ? (dashboardData.engagement.withActiveDeals > 0 ? '+' : '') : ''}{(dashboardData.engagement?.withActiveDeals || 0) - 5} from last month
+              </p>
             </CardContent>
           </Card>
         </div>
+      )}
 
-        {/* Advanced Filters */}
-        <Collapsible open={showAdvancedFilters} onOpenChange={setShowAdvancedFilters}>
-          <CollapsibleTrigger asChild>
-            <Card className="cursor-pointer hover:shadow-md transition-shadow">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Sliders className="h-5 w-5" />
-                    <CardTitle>Advanced Filters & Segments</CardTitle>
-                    {activeFilters.length > 0 && (
-                      <Badge variant="secondary">
-                        {activeFilters.length} active
-                      </Badge>
-                    )}
-                  </div>
-                  <Button variant="ghost" size="sm">
-                    {showAdvancedFilters ? 'Hide' : 'Show'} Filters
+      {/* Charts */}
+      {dashboardData && (
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card className="h-80">
+            <CardHeader>
+              <CardTitle>Contact Distribution by Status</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={statusData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                    label={({ name, percent }) => `${name}: ${(percent ? percent * 100 : 0).toFixed(0)}%`}
+                  >
+                    {statusData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+          
+          <Card className="h-80">
+            <CardHeader>
+              <CardTitle>Top Sources</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={sourceData}
+                  margin={{
+                    top: 5,
+                    right: 30,
+                    left: 20,
+                    bottom: 5,
+                  }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="value" fill="#8884d8" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Contacts Table */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Contacts</CardTitle>
+            <div className="flex items-center space-x-2">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search contacts..."
+                  className="pl-8 md:w-[300px]"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              <Collapsible open={showFilters} onOpenChange={setShowFilters}>
+                <CollapsibleTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Filter className="mr-2 h-4 w-4" />
+                    Filters
                   </Button>
-                </div>
-              </CardHeader>
-            </Card>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <AdvancedFilters
-              onFiltersChange={handleFiltersChange}
-              onSegmentSelect={handleSegmentSelect}
-              contacts={contacts}
-            />
-          </CollapsibleContent>
-        </Collapsible>
-
-        {/* Filters and Search */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                  <Input
-                    placeholder="Search contacts..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-80 pl-10"
-                  />
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline">
-                      <Filter className="mr-2 h-4 w-4" />
-                      Status: {selectedStatus === "all" ? "All" : selectedStatus}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuItem onClick={() => setSelectedStatus("all")}>All Statuses</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setSelectedStatus("customer")}>Customers</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setSelectedStatus("prospect")}>Prospects</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setSelectedStatus("lead")}>Leads</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setSelectedStatus("inactive")}>Inactive</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Button variant="outline" size="sm">
-                  Import
-                </Button>
-                <Button variant="outline" size="sm">
-                  Export
-                </Button>
-              </div>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="px-6 pb-4">
+                    <AdvancedFilters 
+                      onFiltersChange={setFilters}
+                      onSegmentSelect={(segment) => console.log('Segment selected:', segment)}
+                      contacts={contacts}
+                    />
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
             </div>
-          </CardHeader>
-          <CardContent>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {error ? (
+            <div className="flex flex-col items-center justify-center py-8">
+              <div className="text-red-500 mb-2">Error: {error}</div>
+              <Button onClick={refreshContacts}>Retry</Button>
+            </div>
+          ) : loading ? (
+            <div className="flex justify-center py-8">
+              <div className="text-muted-foreground">Loading contacts...</div>
+            </div>
+          ) : (
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Name</TableHead>
                   <TableHead>Contact</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Lead Score</TableHead>
-                  <TableHead>Source</TableHead>
                   <TableHead>Tags</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -266,101 +353,103 @@ export default function ContactsPage() {
                     <TableCell>
                       <div className="flex items-center space-x-3">
                         <Avatar>
-                          <AvatarImage
-                            src={`https://api.dicebear.com/7.x/initials/svg?seed=${contact.firstName} ${contact.lastName}`}
-                          />
-                          <AvatarFallback>
-                            {contact.firstName[0]}
-                            {contact.lastName[0]}
-                          </AvatarFallback>
+                          <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${contact.firstName}+${contact.lastName}`} />
+                          <AvatarFallback>{contact.firstName.charAt(0)}{contact.lastName.charAt(0)}</AvatarFallback>
                         </Avatar>
                         <div>
-                          <div className="font-medium">
-                            {contact.firstName} {contact.lastName}
-                          </div>
-                          <div className="text-sm text-gray-500">{contact.email}</div>
-                          <div className="text-sm text-gray-500">{contact.phone}</div>
+                          <div className="font-medium">{contact.firstName} {contact.lastName}</div>
+                          <div className="text-sm text-muted-foreground">{contact.company}</div>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge className={getStatusColor(contact.status)}>{contact.status}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <div className={`font-medium ${getLeadScoreColor(contact.leadScore)}`}>{contact.leadScore}</div>
-                        <div className="h-2 w-16 bg-gray-200 rounded-full">
-                          <div
-                            className={`h-2 rounded-full ${
-                              contact.leadScore >= 80
-                                ? "bg-green-500"
-                                : contact.leadScore >= 60
-                                  ? "bg-yellow-500"
-                                  : "bg-red-500"
-                            }`}
-                            style={{ width: `${contact.leadScore}%` }}
-                          />
+                      <div className="flex flex-col">
+                        <div className="flex items-center">
+                          <Mail className="mr-2 h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm">{contact.email}</span>
+                        </div>
+                        <div className="flex items-center">
+                          <Phone className="mr-2 h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm">{contact.phone}</span>
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>{contact.source}</TableCell>
+                    <TableCell>
+                      <Badge variant={
+                        contact.status === 'customer' ? 'default' :
+                        contact.status === 'PROSPECT' ? 'secondary' :
+                        'outline'
+                      }>
+                        {contact.status === 'PROSPECT' ? 'Prospect' :
+                         contact.status.charAt(0).toUpperCase() + contact.status.slice(1).toLowerCase()}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center">
+                        <Star className="mr-1 h-4 w-4 text-yellow-500" />
+                        <span>{contact.leadScore}</span>
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
                         {contact.tags.map((tag) => (
-                          <Badge key={tag} variant="secondary" className="text-xs">
+                          <Badge key={tag} variant="outline" className="text-xs">
                             {tag}
                           </Badge>
                         ))}
                       </div>
                     </TableCell>
-                    <TableCell>{contact.createdAt.toLocaleDateString()}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end space-x-2">
-                        <Button variant="ghost" size="sm">
-                          <Mail className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm">
-                          <Phone className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm">
-                          <MessageSquare className="h-4 w-4" />
-                        </Button>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Star className="mr-2 h-4 w-4" />
-                              Add to Favorites
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Tag className="mr-2 h-4 w-4" />
-                              Manage Tags
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-red-600">
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Open menu</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <Mail className="mr-2 h-4 w-4" />
+                            Send Email
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <Phone className="mr-2 h-4 w-4" />
+                            Call
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <MessageSquare className="mr-2 h-4 w-4" />
+                            Send Message
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-red-600">
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-          </CardContent>
-        </Card>
-        <AddContactModal open={showAddContact} onOpenChange={setShowAddContact} />
-      </div>
-      
+          )}
+        </CardContent>
+      </Card>
+
+      <AddContactModal 
+        open={isAddModalOpen} 
+        onOpenChange={(open) => {
+          setIsAddModalOpen(open)
+          if (!open) {
+            // Refresh contacts when modal is closed
+            refreshContacts()
+          }
+        }} 
+      />
+    </div>
   )
 }

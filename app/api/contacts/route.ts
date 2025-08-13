@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ContactModel, ContactSearchParams, ContactStats, PaginatedResult, ApiResponse } from '@/lib/models'
 import { prisma } from '@/lib/db'
-import { ContactStatus } from '@prisma/client'
+import { ContactStatus as PrismaContactStatus } from '@prisma/client'
 
 // GET /api/contacts - Search and list contacts
 export async function GET(request: NextRequest) {
@@ -12,19 +12,16 @@ export async function GET(request: NextRequest) {
 
     const params: ContactSearchParams = {
       query: searchParams.get('query') || undefined,
-      status: searchParams.get('status') as ContactStatus || undefined,
+      status: searchParams.get('status') ? [searchParams.get('status') as any] : undefined,
       lifecycle: searchParams.get('lifecycle') as any || undefined,
-      assignedTo: searchParams.get('assignedTo') || undefined,
+      assignedTo: searchParams.get('assignedTo') ? [searchParams.get('assignedTo')!] : undefined,
       tags: searchParams.get('tags')?.split(',') || undefined,
-      source: searchParams.get('source') || undefined,
+      source: searchParams.get('source') ? [searchParams.get('source')!] : undefined,
       company: searchParams.get('company') || undefined,
-      industry: searchParams.get('industry') || undefined,
       leadScoreMin: searchParams.get('leadScoreMin') ? parseInt(searchParams.get('leadScoreMin')!) : undefined,
       leadScoreMax: searchParams.get('leadScoreMax') ? parseInt(searchParams.get('leadScoreMax')!) : undefined,
       createdAfter: searchParams.get('createdAfter') ? new Date(searchParams.get('createdAfter')!) : undefined,
       createdBefore: searchParams.get('createdBefore') ? new Date(searchParams.get('createdBefore')!) : undefined,
-      lastContactAfter: searchParams.get('lastContactAfter') ? new Date(searchParams.get('lastContactAfter')!) : undefined,
-      lastContactBefore: searchParams.get('lastContactBefore') ? new Date(searchParams.get('lastContactBefore')!) : undefined,
       page: searchParams.get('page') ? parseInt(searchParams.get('page')!) : 1,
       limit: searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 50,
       sortBy: searchParams.get('sortBy') || 'createdAt',
@@ -44,9 +41,9 @@ export async function GET(request: NextRequest) {
       ]
     }
 
-    if (params.status) where.status = params.status
-    if (params.assignedTo) where.assignedTo = params.assignedTo
-    if (params.source) where.source = { contains: params.source, mode: 'insensitive' }
+    if (params.status) where.status = params.status[0]
+    if (params.assignedTo) where.assignedTo = params.assignedTo[0]
+    if (params.source) where.source = { contains: params.source[0], mode: 'insensitive' }
     if (params.company) where.company = { contains: params.company, mode: 'insensitive' }
 
     if (params.leadScoreMin !== undefined || params.leadScoreMax !== undefined) {
@@ -153,6 +150,9 @@ export async function GET(request: NextRequest) {
 
 // POST /api/contacts - Create new contact
 export async function POST(request: NextRequest) {
+  const startTime = Date.now()
+  let transactionClient: any = null
+  
   try {
     const body = await request.json()
 
@@ -193,7 +193,26 @@ export async function POST(request: NextRequest) {
 
     // Check if organization exists (for now, we'll use a default organization)
     // In a real app, you'd get this from authentication context
-    const organizationId = body.organizationId || 'default-org'
+    let organizationId = body.organizationId
+    
+    // If no organizationId provided, try to get one from the database
+    if (!organizationId) {
+      const firstOrganization = await prisma.organization.findFirst()
+      if (firstOrganization) {
+        organizationId = firstOrganization.id
+      } else {
+        // Create a default organization if none exists
+        const defaultOrg = await prisma.organization.create({
+          data: {
+            name: "Default Organization",
+            domain: "",
+            settings: {},
+            subscription: {}
+          }
+        })
+        organizationId = defaultOrg.id
+      }
+    }
 
     // Check for duplicate email within organization
     const existingContact = await prisma.contact.findFirst({
@@ -230,46 +249,51 @@ export async function POST(request: NextRequest) {
       position: body.position?.trim(),
       tags: body.tags || [],
       leadScore: body.leadScore || 0,
-      status: body.status || ContactStatus.LEAD,
+      status: body.status || PrismaContactStatus.LEAD,
       source: body.source || 'manual',
       customFields: body.customFields || {},
       organizationId,
       assignedTo: body.assignedTo || null,
     }
 
-    // Create the contact
-    const newContact = await prisma.contact.create({
-      data: contactData,
-      include: {
-        assignedUser: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true
-          }
-        },
-        organization: {
-          select: {
-            id: true,
-            name: true
+    // Use transaction to ensure data consistency and reduce connection usage
+    const [newContact] = await prisma.$transaction(async (tx) => {
+      // Create the contact
+      const createdContact = await tx.contact.create({
+        data: contactData,
+        include: {
+          assignedUser: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true
+            }
+          },
+          organization: {
+            select: {
+              id: true,
+              name: true
+            }
           }
         }
-      }
-    })
+      })
 
-    // Create activity record
-    await prisma.contactActivity.create({
-      data: {
-        contactId: newContact.id,
-        type: 'TAG_ADDED',
-        description: `Contact created with status: ${newContact.status}`,
-        metadata: {
-          source: newContact.source,
-          initialTags: newContact.tags
-        },
-        createdBy: body.createdBy || 'system'
-      }
+      // Create activity record
+      await tx.contactActivity.create({
+        data: {
+          contactId: createdContact.id,
+          type: 'TAG_ADDED',
+          description: `Contact created with status: ${createdContact.status}`,
+          metadata: {
+            source: createdContact.source,
+            initialTags: createdContact.tags
+          },
+          createdBy: body.createdBy || 'system'
+        }
+      })
+      
+      return [createdContact]
     })
 
     const response: ApiResponse<any> = {
@@ -280,6 +304,7 @@ export async function POST(request: NextRequest) {
         timestamp: new Date(),
         requestId: crypto.randomUUID(),
         version: '1.0.0',
+        executionTime: Date.now() - startTime
       },
     }
 
@@ -298,10 +323,16 @@ export async function POST(request: NextRequest) {
         timestamp: new Date(),
         requestId: crypto.randomUUID(),
         version: '1.0.0',
+        executionTime: Date.now() - startTime
       },
     }
 
     return NextResponse.json(errorResponse, { status: 500 })
+  } finally {
+    // Ensure the Prisma client connection is properly managed
+    if (transactionClient) {
+      await transactionClient.$disconnect()
+    }
   }
 }
 
@@ -513,7 +544,7 @@ export async function DELETE(request: NextRequest) {
           contactId: { in: ids }
         },
         data: {
-          contactId: null
+          contactId: undefined
         }
       })
 
@@ -523,7 +554,7 @@ export async function DELETE(request: NextRequest) {
           contactId: { in: ids }
         },
         data: {
-          contactId: null
+          contactId: undefined
         }
       })
 
@@ -533,7 +564,7 @@ export async function DELETE(request: NextRequest) {
           contactId: { in: ids }
         },
         data: {
-          contactId: null
+          contactId: undefined
         }
       })
 

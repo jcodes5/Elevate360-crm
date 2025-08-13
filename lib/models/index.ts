@@ -13,6 +13,9 @@ export * from './campaign-models'
 // Task & Activity Management Models
 export * from './task-models'
 
+// Workflow Models
+export * from './workflow-models'
+
 // Analytics & Reporting Models
 export * from './analytics-models'
 

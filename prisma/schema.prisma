@@ -30,6 +30,7 @@ model Organization {
   campaigns   Campaign[]
   appointments Appointment[]
   workflows   Workflow[]
+  workflowExecutions WorkflowExecution[]
   clientHistory ClientHistory[]
 
   @@map("organizations")
@@ -63,6 +64,7 @@ model User {
   createdCampaigns Campaign[]
   assignedAppointments Appointment[]
   createdWorkflows Workflow[]
+  workflowExecutions WorkflowExecution[]
   clientHistoryEntries ClientHistory[]
 
   @@map("users")
@@ -98,6 +100,7 @@ model Contact {
   notes          ContactNote[]
   activities     ContactActivity[]
   appointments   Appointment[]
+  workflowExecutions WorkflowExecution[]
   clientHistory  ClientHistory[]
 
   @@map("contacts")
@@ -296,6 +299,7 @@ model Workflow {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   creator      User         @relation(fields: [createdBy], references: [id], onDelete: Restrict)
   campaigns    Campaign[]
+  executions   WorkflowExecution[]
 
   @@map("workflows")
 }
@@ -327,6 +331,61 @@ model Appointment {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@map("appointments")
+}
+
+// Workflow Execution model
+model WorkflowExecution {
+  id              String                 @id @default(cuid())
+  workflowId      String
+  contactId       String
+  nodeId          String
+  status          WorkflowExecutionStatus @default(PENDING)
+  startedAt       DateTime?
+  completedAt     DateTime?
+  scheduledAt     DateTime?
+  errorMessage    String?                @db.Text
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  // Foreign keys
+  organizationId String
+  userId         String?
+
+  // Relations
+  workflow       Workflow      @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  contact        Contact       @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  steps          WorkflowExecutionStep[]
+
+  @@index([workflowId])
+  @@index([contactId])
+  @@index([status])
+  @@index([scheduledAt])
+  @@map("workflow_executions")
+}
+
+// Workflow Execution Step model
+model WorkflowExecutionStep {
+  id           String                 @id @default(cuid())
+  executionId  String
+  nodeId       String
+  status       WorkflowExecutionStatus @default(PENDING)
+  startedAt    DateTime?
+  completedAt  DateTime?
+  inputData    Json?
+  outputData   Json?
+  errorMessage String?                @db.Text
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+
+  // Relations
+  execution    WorkflowExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+
+  @@index([executionId])
+  @@index([nodeId])
+  @@index([status])
+  @@map("workflow_execution_steps")
 }
 
 // Client History model
@@ -429,6 +488,15 @@ enum WorkflowStatus {
   ACTIVE
   PAUSED
   ARCHIVED
+}
+
+enum WorkflowExecutionStatus {
+  PENDING
+  SCHEDULED
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
 }
 
 enum AppointmentStatus {
