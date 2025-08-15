@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user already exists
-    const existingUsers = await db.findMany<User>("users", { email })
+    const existingUsers = await db.findMany<User>("users", { where: { email } })
     if (existingUsers.length > 0) {
       return NextResponse.json(
         { success: false, message: "User with this email already exists" }, 
@@ -92,9 +92,21 @@ export async function POST(request: NextRequest) {
     // Hash password
     const hashedPassword = await EnhancedAuthService.hashPassword(password)
 
-    // For now, use a default organization ID
-    // In a real app, you'd create or assign to an organization
-    const organizationId = "default-org"
+    // Create organization for the user
+    const organizationData = {
+      name: organizationName || `${firstName}'s Organization`,
+      settings: {},
+      subscription: {},
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+
+    const organization: any = await db.create("organizations", organizationData)
+    
+    // Ensure we have a valid organization ID
+    if (!organization || !organization.id) {
+      return NextResponse.json({ success: false, message: "Failed to create organization" }, { status: 500 })
+    }
 
     // Create user
     const userData = {
@@ -103,7 +115,7 @@ export async function POST(request: NextRequest) {
       firstName,
       lastName,
       role,
-      organizationId,
+      organizationId: organization.id,
       isActive: true,
       isOnboardingCompleted: false,
       onboardingStep: 0,

@@ -335,7 +335,7 @@ export default function ContactsPage() {
             <div className="flex justify-center py-8">
               <div className="text-muted-foreground">Loading contacts...</div>
             </div>
-          ) : (
+          ) : filteredContacts.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -436,6 +436,16 @@ export default function ContactsPage() {
                 ))}
               </TableBody>
             </Table>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12">
+              <Users className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium mb-2">No contacts found</h3>
+              <p className="text-muted-foreground mb-4">Get started by adding a new contact.</p>
+              <Button onClick={() => setIsAddModalOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Contact
+              </Button>
+            </div>
           )}
         </CardContent>
       </Card>

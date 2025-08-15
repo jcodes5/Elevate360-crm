@@ -60,7 +60,8 @@ export class ContactService {
         throw new Error('Invalid API response format');
       }
       
-      const contacts = result.data || [];
+      // Extract contacts from the paginated response
+      const contacts = result.data?.data || [];
       
       // Ensure contacts is an array before trying to map
       if (!Array.isArray(contacts)) {
@@ -153,7 +154,8 @@ export class ContactService {
       }
       
       const result = await response.json();
-      const contacts = result.data || [];
+      // Extract contacts from the paginated response
+      const contacts = result.data?.data || [];
       
       if (!Array.isArray(contacts)) {
         throw new Error('Contacts data is not an array');

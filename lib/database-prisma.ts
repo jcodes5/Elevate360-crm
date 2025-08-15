@@ -30,32 +30,33 @@ export class PrismaDatabase {
   // Generic CRUD operations
   async create<T>(table: string, data: Partial<T>): Promise<T> {
     const model = this.getModel(table)
-    return await model.create({
+    const result = await model.create({
       data: data as any,
     })
+    return result as T
   }
 
   async findById<T>(table: string, id: string): Promise<T | null> {
     const model = this.getModel(table)
     return await model.findUnique({
       where: { id },
-    })
+    }) as T | null
   }
 
   async findByEmail<T>(table: string, email: string): Promise<T | null> {
     const model = this.getModel(table)
     return await model.findUnique({
       where: { email },
-    })
+    }) as T | null
   }
 
-  async updateById<T>(table: string, id: string, data: Partial<T>): Promise<T | null> {
+  async updateById<T>(table: string, id: string, updates: Partial<T>): Promise<T | null> {
     const model = this.getModel(table)
     try {
       return await model.update({
         where: { id },
-        data: data as any,
-      })
+        data: updates as any,
+      }) as T
     } catch (error) {
       console.error(`Error updating ${table} with id ${id}:`, error)
       return null
@@ -92,7 +93,7 @@ export class PrismaDatabase {
       skip: options?.offset,
       orderBy: options?.orderBy,
       include: options?.include,
-    })
+    }) as T[]
   }
 
   async count(table: string, where?: any): Promise<number> {
@@ -164,7 +165,17 @@ export class PrismaDatabase {
     }) as Organization
   }
 
-  async findOrganizationById(id: string): Promise<Organization | null> {
+  // User-specific methods
+  async createUser(userData: Partial<User>): Promise<User> {
+    return await this.client.user.create({
+      data: userData as any,
+      include: {
+        organization: true,
+      },
+    }) as User
+  }
+
+  async findUserById(id: string): Promise<User | null> {
     return await this.client.organization.findUnique({
       where: { id },
       include: {

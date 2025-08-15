@@ -437,3 +437,11 @@ export type HistoryType =
   | "appointment_scheduled"
   | "task_completed"
   | "note_added"
+
+// Analytics
+export interface Analytics {
+  totalContacts: number
+  totalDeals: number
+  totalRevenue: number
+  pendingTasks: number
+}

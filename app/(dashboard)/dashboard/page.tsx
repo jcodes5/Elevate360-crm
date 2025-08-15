@@ -30,102 +30,32 @@ import {
   BarChart3,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { useRouter } from "next/navigation"
 
-// Mock data fetching functions
+// API fetching functions
 const fetchDashboardStats = async () => {
-  await new Promise((resolve) => setTimeout(resolve, 1000))
-  return {
-    totalContacts: 2847,
-    totalRevenue: 125000,
-    activeDeals: 23,
-    campaignsSent: 156,
-    contactsGrowth: 12.5,
-    revenueGrowth: 8.2,
-    dealsGrowth: -2.1,
-    campaignsGrowth: 15.3,
-  }
+  const response = await fetch('/api/dashboard/stats')
+  const data = await response.json()
+  return data.data
 }
 
 const fetchRecentActivities = async () => {
-  await new Promise((resolve) => setTimeout(resolve, 800))
-  return [
-    {
-      id: 1,
-      type: "contact",
-      title: "New contact added",
-      description: "John Doe from Lagos Tech Hub",
-      time: "2 minutes ago",
-      icon: Users,
-      color: "text-blue-500",
-    },
-    {
-      id: 2,
-      type: "deal",
-      title: "Deal closed",
-      description: "₦500,000 - Website Development",
-      time: "1 hour ago",
-      icon: DollarSign,
-      color: "text-green-500",
-    },
-    {
-      id: 3,
-      type: "campaign",
-      title: "Email campaign sent",
-      description: "Monthly Newsletter to 1,200 contacts",
-      time: "3 hours ago",
-      icon: Mail,
-      color: "text-purple-500",
-    },
-    {
-      id: 4,
-      type: "appointment",
-      title: "Appointment scheduled",
-      description: "Client meeting tomorrow at 2 PM",
-      time: "5 hours ago",
-      icon: Calendar,
-      color: "text-orange-500",
-    },
-  ]
+  const response = await fetch('/api/dashboard/activities')
+  const data = await response.json()
+  return data.data
 }
 
 const fetchUpcomingTasks = async () => {
-  await new Promise((resolve) => setTimeout(resolve, 600))
-  return [
-    {
-      id: 1,
-      title: "Follow up with Adebayo Industries",
-      priority: "high",
-      dueDate: "Today, 3:00 PM",
-      status: "pending",
-    },
-    {
-      id: 2,
-      title: "Prepare proposal for Lagos State Gov",
-      priority: "high",
-      dueDate: "Tomorrow, 10:00 AM",
-      status: "in-progress",
-    },
-    {
-      id: 3,
-      title: "Review marketing campaign metrics",
-      priority: "medium",
-      dueDate: "Dec 15, 2:00 PM",
-      status: "pending",
-    },
-    {
-      id: 4,
-      title: "Update CRM contact database",
-      priority: "low",
-      dueDate: "Dec 18, 9:00 AM",
-      status: "completed",
-    },
-  ]
+  const response = await fetch('/api/dashboard/tasks')
+  const data = await response.json()
+  return data.data
 }
 
 export default function DashboardPage() {
   const [showCreateCampaign, setShowCreateCampaign] = useState(false)
   const [showAddContact, setShowAddContact] = useState(false)
   const { toast } = useToast()
+  const router = useRouter()
 
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["dashboard-stats"],
@@ -142,11 +72,46 @@ export default function DashboardPage() {
     queryFn: fetchUpcomingTasks,
   })
 
-  const handleQuickAction = (action: string) => {
-    toast({
-      title: "Quick Action",
-      description: `${action} feature will be available soon!`,
-    })
+  const handleQuickAction = async (action: string) => {
+    switch (action) {
+      case "Schedule Call":
+        // Navigate to appointments page with call type pre-selected
+        router.push('/appointments?quickAction=call')
+        toast({
+          title: "Schedule Call",
+          description: "Opening call scheduling interface...",
+        })
+        break
+      case "Send Email":
+        // Open email composer
+        window.open('mailto:')
+        toast({
+          title: "Send Email",
+          description: "Opening email composer...",
+        })
+        break
+      case "View Analytics":
+        // Navigate to analytics page
+        router.push('/analytics')
+        toast({
+          title: "View Analytics",
+          description: "Redirecting to analytics dashboard...",
+        })
+        break
+      case "Book Meeting":
+        // Navigate to appointments page with meeting type pre-selected
+        router.push('/appointments?quickAction=meeting')
+        toast({
+          title: "Book Meeting",
+          description: "Opening meeting booking interface...",
+        })
+        break
+      default:
+        toast({
+          title: "Quick Action",
+          description: `${action} feature will be available soon!`,
+        })
+    }
   }
 
   const containerVariants = {
@@ -200,9 +165,15 @@ export default function DashboardPage() {
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{statsLoading ? "..." : stats?.totalContacts.toLocaleString()}</div>
+                <div className="text-2xl font-bold">{statsLoading ? "..." : stats?.totalContacts?.toLocaleString() || "0"}</div>
                 <p className="text-xs text-muted-foreground flex items-center">
-                  <ArrowUpRight className="h-3 w-3 text-green-500 mr-1" />+{stats?.contactsGrowth}% from last month
+                  {stats?.contactsGrowth !== undefined ? (
+                    <>
+                      <ArrowUpRight className="h-3 w-3 text-green-500 mr-1" />+{stats?.contactsGrowth}% from last month
+                    </>
+                  ) : (
+                    "No data available"
+                  )}
                 </p>
               </CardContent>
             </Card>
@@ -214,10 +185,16 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {statsLoading ? "..." : `₦${stats?.totalRevenue.toLocaleString()}`}
+                  {statsLoading ? "..." : `₦${stats?.totalRevenue?.toLocaleString() || "0"}`}
                 </div>
                 <p className="text-xs text-muted-foreground flex items-center">
-                  <ArrowUpRight className="h-3 w-3 text-green-500 mr-1" />+{stats?.revenueGrowth}% from last month
+                  {stats?.revenueGrowth !== undefined ? (
+                    <>
+                      <ArrowUpRight className="h-3 w-3 text-green-500 mr-1" />+{stats?.revenueGrowth}% from last month
+                    </>
+                  ) : (
+                    "No data available"
+                  )}
                 </p>
               </CardContent>
             </Card>
@@ -228,10 +205,16 @@ export default function DashboardPage() {
                 <Target className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{statsLoading ? "..." : stats?.activeDeals}</div>
+                <div className="text-2xl font-bold">{statsLoading ? "..." : stats?.activeDeals || "0"}</div>
                 <p className="text-xs text-muted-foreground flex items-center">
-                  <ArrowDownRight className="h-3 w-3 text-red-500 mr-1" />
-                  {stats?.dealsGrowth}% from last month
+                  {stats?.dealsGrowth !== undefined ? (
+                    <>
+                      <ArrowDownRight className="h-3 w-3 text-red-500 mr-1" />
+                      {stats?.dealsGrowth}% from last month
+                    </>
+                  ) : (
+                    "No data available"
+                  )}
                 </p>
               </CardContent>
             </Card>
@@ -242,9 +225,15 @@ export default function DashboardPage() {
                 <MessageSquare className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{statsLoading ? "..." : stats?.campaignsSent}</div>
+                <div className="text-2xl font-bold">{statsLoading ? "..." : stats?.campaignsSent || "0"}</div>
                 <p className="text-xs text-muted-foreground flex items-center">
-                  <ArrowUpRight className="h-3 w-3 text-green-500 mr-1" />+{stats?.campaignsGrowth}% from last month
+                  {stats?.campaignsGrowth !== undefined ? (
+                    <>
+                      <ArrowUpRight className="h-3 w-3 text-green-500 mr-1" />+{stats?.campaignsGrowth}% from last month
+                    </>
+                  ) : (
+                    "No data available"
+                  )}
                 </p>
               </CardContent>
             </Card>
@@ -272,8 +261,8 @@ export default function DashboardPage() {
                         </div>
                       ))}
                     </div>
-                  ) : (
-                    activities?.map((activity) => {
+                  ) : activities && activities.length > 0 ? (
+                    activities?.map((activity: any) => {
                       const Icon = activity.icon
                       return (
                         <div key={activity.id} className="flex items-center space-x-4">
@@ -288,6 +277,10 @@ export default function DashboardPage() {
                         </div>
                       )
                     })
+                  ) : (
+                    <div className="text-center py-4">
+                      <p className="text-muted-foreground">No recent activities found</p>
+                    </div>
                   )}
                 </div>
               </CardContent>
@@ -350,9 +343,9 @@ export default function DashboardPage() {
                           <div key={i} className="h-16 bg-muted rounded animate-pulse" />
                         ))}
                       </div>
-                    ) : (
+                    ) : tasks && tasks.length > 0 ? (
                       <div className="space-y-3">
-                        {tasks?.slice(0, 3).map((task) => (
+                        {tasks?.slice(0, 3).map((task: any) => (
                           <div key={task.id} className="flex items-center space-x-3 p-3 border rounded-lg">
                             <div className="flex-shrink-0">
                               {task.status === "completed" ? (
@@ -381,6 +374,10 @@ export default function DashboardPage() {
                             </Badge>
                           </div>
                         ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-4">
+                        <p className="text-muted-foreground">No upcoming tasks found</p>
                       </div>
                     )}
                   </TabsContent>

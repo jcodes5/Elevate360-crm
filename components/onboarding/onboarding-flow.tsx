@@ -132,7 +132,7 @@ export function OnboardingFlow() {
   })
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
-  const { user } = useAuth()
+  const { user, login } = useAuth()
   const router = useRouter()
 
   const updateData = (field: keyof OnboardingData, value: any) => {
@@ -173,6 +173,11 @@ export function OnboardingFlow() {
       })
 
       console.log("Onboarding completion response:", response)
+
+      // Update auth context with the new user data
+      if (response.data?.user) {
+        login(response.data.user, apiClient.currentToken || "")
+      }
 
       toast({
         title: "Welcome aboard! 🎉",

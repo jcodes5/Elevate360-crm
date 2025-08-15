@@ -42,13 +42,16 @@ export async function POST(request: NextRequest) {
 
     console.log("User updated successfully:", updatedUser.id)
 
+    // Remove password from response
+    const { password: _, ...userWithoutPassword } = updatedUser as any
+
     console.log("Onboarding completed for user:", decoded.userId, "with data:", onboardingData)
 
     const response = {
       success: true,
       message: "Onboarding completed successfully",
       data: {
-        user: { ...updatedUser, password: undefined } // Remove password from response
+        user: userWithoutPassword
       }
     }
 
