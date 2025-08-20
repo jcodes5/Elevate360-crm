@@ -1,68 +1,61 @@
 "use client"
 
-import type React from "react"
-
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/hooks/use-auth"
-import { PermissionService } from "@/lib/permissions"
-import type { Resource, Action } from "@/types"
+import { apiClient } from "@/lib/api-client"
 
 interface ProtectedRouteProps {
   children: React.ReactNode
-  requiredResource?: Resource
-  requiredAction?: Action
-  fallbackPath?: string
 }
 
-export function ProtectedRoute({
-  children,
-  requiredResource,
-  requiredAction = "read",
-  fallbackPath = "/auth/login",
-}: ProtectedRouteProps) {
-  const { user, isLoading, isAuthenticated } = useAuth()
+export function ProtectedRoute({ children }: ProtectedRouteProps) {
+  const { isAuthenticated, isLoading, logout } = useAuth()
   const router = useRouter()
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
 
   useEffect(() => {
-    if (!isLoading) {
-      if (!isAuthenticated) {
-        router.push(fallbackPath)
-        return
-      }
-
-      if (requiredResource && user) {
-        const hasPermission = PermissionService.hasPermission(user.role, requiredResource, requiredAction)
-
-        if (!hasPermission) {
-          router.push("/dashboard") // Redirect to dashboard if no permission
-          return
+    const checkAuth = async () => {
+      if (!isLoading) {
+        if (isAuthenticated) {
+          // Test if the token is still valid by making a simple API call
+          try {
+            // This will automatically handle token refresh if needed
+            await apiClient.get("/test")
+          } catch (error: any) {
+            if (error.message === "UNAUTHORIZED") {
+              // Token is invalid or expired, log out the user
+              await logout()
+            }
+          }
         }
+        setIsCheckingAuth(false)
       }
     }
-  }, [isLoading, isAuthenticated, user, requiredResource, requiredAction, router, fallbackPath])
+    
+    checkAuth()
+  }, [isAuthenticated, isLoading, logout, router])
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    )
-  }
-
-  if (!isAuthenticated) {
+  // During loading, we should still allow the login page to render
+  if (isLoading || isCheckingAuth) {
+    // Allow login page to render during loading
+    // Check if we're on the client side before accessing window
+    if (typeof window !== 'undefined') {
+      return <>{children}</>
+    }
+    // On server side, render nothing during loading
     return null
   }
 
-  if (requiredResource && user && !PermissionService.hasPermission(user.role, requiredResource, requiredAction)) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
-          <p className="text-gray-600">You don't have permission to access this resource.</p>
-        </div>
-      </div>
-    )
+  // If not authenticated, redirect to login page
+  if (!isAuthenticated) {
+    // If we're on the login page, allow rendering
+    // Check if we're on the client side before accessing window
+    if (typeof window !== 'undefined') {
+      return <>{children}</>
+    }
+    // On server side, render children for unauthenticated users
+    return <>{children}</>
   }
 
   return <>{children}</>

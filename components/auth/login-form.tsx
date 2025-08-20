@@ -16,6 +16,7 @@ import { apiClient } from "@/lib/api-client"
 import { toast } from "@/hooks/use-toast"
 import { useAuth } from "@/hooks/use-auth"
 import { testLoginAPI } from "@/lib/test-api"
+import type { User } from "@/types"
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -23,6 +24,13 @@ const loginSchema = z.object({
 })
 
 type LoginFormData = z.infer<typeof loginSchema>
+
+interface LoginResponseData {
+  user: User
+  token: string
+  refreshToken: string
+  expiresIn: number
+}
 
 export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false)
@@ -43,9 +51,13 @@ export function LoginForm() {
       try {
         const response = await apiClient.login(data.email, data.password)
         console.log("Login response:", response)
-        return response.data
-      } catch (error) {
+        return response.data as unknown as LoginResponseData
+      } catch (error: any) {
         console.error("Login mutation error:", error)
+        // Handle specific error cases
+        if (error.message === "UNAUTHORIZED") {
+          throw new Error("Invalid email or password")
+        }
         throw error
       }
     },

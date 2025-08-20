@@ -1,4 +1,5 @@
 import type { ApiResponse, PaginationParams } from "@/types"
+import { useRouter } from "next/navigation"
 
 class ApiClient {
   private baseUrl: string
@@ -11,11 +12,6 @@ class ApiClient {
 
   constructor(baseUrl = "/api") {
     this.baseUrl = baseUrl
-
-    // Get token from localStorage if available
-    if (typeof window !== "undefined") {
-      this.token = localStorage.getItem("authToken")
-    }
   }
 
   private async checkNetworkConnectivity(): Promise<void> {
@@ -26,16 +22,33 @@ class ApiClient {
 
   setToken(token: string) {
     this.token = token
-    if (typeof window !== "undefined") {
-      localStorage.setItem("authToken", token)
-    }
   }
 
   clearToken() {
     this.token = null
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("authToken")
+  }
+
+  private async refreshAccessToken(): Promise<string | null> {
+    try {
+      // Make a request to refresh endpoint, cookies will be sent automatically
+      const response = await fetch(`${this.baseUrl}/auth/refresh`, {
+        method: "POST",
+        credentials: "include", // Include cookies
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success && data.data?.accessToken) {
+          return data.data.accessToken
+        }
+      }
+    } catch (error) {
+      console.error("Token refresh failed:", error)
     }
+    return null
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
@@ -49,6 +62,7 @@ class ApiClient {
       ...options.headers,
     }
 
+    // Add Authorization header if we have a token
     if (this.token) {
       headers.Authorization = `Bearer ${this.token}`
     }
@@ -69,12 +83,36 @@ class ApiClient {
 
       console.log(`[${requestId}] Making fetch request to:`, url, 'with headers:', headers)
 
-      const response = await fetch(url, {
+      let response = await fetch(url, {
         ...options,
         headers,
         // Add credentials to handle cookies if needed
-        credentials: 'same-origin',
+        credentials: 'include', // Always include cookies for authentication
       })
+
+      // If unauthorized, try to refresh token
+      if (response.status === 401) {
+        const newToken = await this.refreshAccessToken()
+        if (newToken) {
+          this.setToken(newToken)
+          // Retry the request with new token
+          const retryHeaders = {
+            ...headers,
+            Authorization: `Bearer ${newToken}`
+          }
+          
+          response = await fetch(url, {
+            ...options,
+            headers: retryHeaders,
+            credentials: 'include',
+          })
+        } else {
+          // If refresh failed, clear token and redirect to login
+          this.clearToken()
+          // In a real implementation, we would redirect to login here
+          // but we can't do that directly from this class
+        }
+      }
 
       console.log(`[${requestId}] Response status:`, response.status, 'statusText:', response.statusText)
 
@@ -137,6 +175,12 @@ class ApiClient {
         const errorMessage = data?.message || data?.error || `HTTP ${response.status}: ${response.statusText}`
         console.error(`[${requestId}] API request failed with status:`, response.status, 'data:', data)
         console.error(`[${requestId}] Error message:`, errorMessage)
+        
+        // If it's an auth error, throw a specific error
+        if (response.status === 401) {
+          throw new Error('UNAUTHORIZED')
+        }
+        
         throw new Error(errorMessage)
       }
 

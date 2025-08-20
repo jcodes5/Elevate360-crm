@@ -2,6 +2,7 @@ import jwt from "jsonwebtoken"
 import bcrypt from "bcryptjs"
 import { cookies } from "next/headers"
 import type { User } from "@/types"
+import { NextRequest } from "next/server"
 
 // JWT Configuration
 const JWT_ACCESS_SECRET = process.env.JWT_SECRET || "your-access-secret-key"
@@ -193,6 +194,13 @@ export class EnhancedAuthService {
     }
 
     return null
+  }
+
+  // Get tokens from cookies in Next.js middleware
+  static getTokensFromCookies(request: NextRequest): { accessToken: string | null; refreshToken: string | null } {
+    const accessToken = request.cookies.get('accessToken')?.value || null
+    const refreshToken = request.cookies.get('refreshToken')?.value || null
+    return { accessToken, refreshToken }
   }
 
   // Validate password strength

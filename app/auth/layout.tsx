@@ -1,10 +1,8 @@
-
-
 import type { Metadata } from "next"
 import { Inter as FontSans } from "next/font/google"
-import "./globals.css"
+import "../globals.css"
 import { cn } from "@/lib/utils"
-import { Providers } from "./providers"
+import { Providers } from "../providers"
 import { QueryProvider } from "@/components/providers/query-provider"
 import { AuthProvider } from "@/hooks/use-auth"
 import { ThemeProvider } from "@/components/theme-provider"
@@ -16,34 +14,15 @@ const fontSans = FontSans({
 })
 
 export const metadata: Metadata = {
-  title: "Elevate360 CRM - Complete Nigerian Business Solution",
-  description:
-    "Comprehensive CRM platform for Nigerian businesses with marketing automation, sales pipeline, and customer management.",
+  title: "Elevate360 CRM - Authentication",
+  description: "Login to your Elevate360 CRM account",
 }
 
-export function ClientLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <QueryProvider>
-      <AuthProvider>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          {children}
-          <Toaster />
-        </ThemeProvider>
-      </AuthProvider>
-    </QueryProvider>
-  )
-}
-
-export default function RootLayout({
+export default function AuthLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode
-}>) {
+}) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body
@@ -53,7 +32,21 @@ export default function RootLayout({
         )}
       >
         <Providers>
-          <ClientLayout>{children}</ClientLayout>
+          <QueryProvider>
+            <AuthProvider>
+              <ThemeProvider 
+                attribute="class" 
+                defaultTheme="system" 
+                enableSystem 
+                disableTransitionOnChange
+              >
+                <div className="min-h-screen flex items-center justify-center">
+                  {children}
+                </div>
+                <Toaster />
+              </ThemeProvider>
+            </AuthProvider>
+          </QueryProvider>
         </Providers>
       </body>
     </html>

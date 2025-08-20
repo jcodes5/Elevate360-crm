@@ -1,22 +1,35 @@
-import { NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
+import { EnhancedAuthService } from "@/lib/auth-enhanced"
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    // Get token from request
+    const token = EnhancedAuthService.getTokenFromRequest(request)
+    
+    if (!token) {
+      return NextResponse.json(
+        { success: false, message: "No token provided" },
+        { status: 401 }
+      )
+    }
+    
+    // Verify token
+    const payload = EnhancedAuthService.verifyAccessToken(token)
+    
     return NextResponse.json({
       success: true,
-      message: "API is working correctly",
-      timestamp: new Date().toISOString(),
-      env: {
-        NODE_ENV: process.env.NODE_ENV,
-        USE_MOCK_DB: process.env.USE_MOCK_DB,
-      }
+      data: {
+        userId: payload.userId,
+        email: payload.email,
+        role: payload.role,
+        organizationId: payload.organizationId,
+      },
+      message: "Token is valid"
     })
   } catch (error) {
-    console.error("Test API error:", error)
-    return NextResponse.json({
-      success: false,
-      message: "Test API failed",
-      error: error instanceof Error ? error.message : String(error)
-    }, { status: 500 })
+    return NextResponse.json(
+      { success: false, message: "Invalid or expired token" },
+      { status: 401 }
+    )
   }
 }

@@ -3,12 +3,13 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
 import type { User } from "@/types"
 import { apiClient } from "@/lib/api-client"
+import { useRouter } from "next/navigation"
 
 interface AuthContextType {
   user: User | null
   token: string | null
   login: (user: User, token: string) => void
-  logout: () => void
+  logout: () => Promise<void>
   isLoading: boolean
   isAuthenticated: boolean
   needsOnboarding: boolean
@@ -20,21 +21,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [token, setToken] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const router = useRouter()
 
   useEffect(() => {
     // Check for existing auth token on mount
-    const storedToken = localStorage.getItem("authToken")
+    // For now, we'll rely on the API client to handle token management
+    // In a real implementation, we would check for HTTP-only cookies on the server
     const storedUser = localStorage.getItem("authUser")
 
-    if (storedToken && storedUser) {
+    if (storedUser) {
       try {
         const parsedUser = JSON.parse(storedUser)
-        setToken(storedToken)
         setUser(parsedUser)
-        apiClient.setToken(storedToken)
+        // Token is managed by HTTP-only cookies, so we don't need to store it in localStorage
       } catch (error) {
         console.error("Error parsing stored user:", error)
-        localStorage.removeItem("authToken")
         localStorage.removeItem("authUser")
       }
     }
@@ -45,9 +46,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = (userData: User, authToken: string) => {
     setUser(userData)
     setToken(authToken)
-    localStorage.setItem("authToken", authToken)
     localStorage.setItem("authUser", JSON.stringify(userData))
-    apiClient.setToken(authToken)
+    // Token is managed by HTTP-only cookies, so we don't need to store it in localStorage
+    apiClient.setToken(authToken) // Still set it in the API client for client-side requests
   }
 
   const logout = async () => {
@@ -58,7 +59,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setUser(null)
       setToken(null)
-      localStorage.removeItem("authToken")
       localStorage.removeItem("authUser")
       apiClient.clearToken()
     }
@@ -70,7 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     logout,
     isLoading,
-    isAuthenticated: !!user && !!token,
+    isAuthenticated: !!user,
     needsOnboarding: !!user && !user.isOnboardingCompleted,
   }
 

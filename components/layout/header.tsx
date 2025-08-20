@@ -17,9 +17,16 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { User, Settings, LogOut } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
+import { useRouter } from "next/navigation"
 
 export function Header() {
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
+  const router = useRouter()
+
+  const handleLogout = async () => {
+    await logout()
+    router.push("/auth/login")
+  }
 
   return (
     <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
@@ -68,7 +75,7 @@ export function Header() {
                 <span>Settings</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={handleLogout}>
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Log out</span>
               </DropdownMenuItem>

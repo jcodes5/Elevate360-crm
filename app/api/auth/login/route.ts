@@ -57,7 +57,8 @@ export async function POST(request: NextRequest) {
     // Remove password from response
     const { password: _, ...userWithoutPassword } = user as any
 
-    return NextResponse.json({
+    // Create response
+    const response = NextResponse.json({
       success: true,
       data: {
         user: userWithoutPassword,
@@ -65,7 +66,27 @@ export async function POST(request: NextRequest) {
         refreshToken,
         expiresIn: 900, // 15 minutes
       },
+      message: "Login successful"
     })
+
+    // Set cookies
+    response.cookies.set('accessToken', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 15 * 60, // 15 minutes
+      path: '/'
+    })
+
+    response.cookies.set('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60, // 7 days
+      path: '/'
+    })
+
+    return response
   } catch (error) {
     console.error("Login error:", error)
     return NextResponse.json({ success: false, message: "Internal server error" }, { status: 500 })
