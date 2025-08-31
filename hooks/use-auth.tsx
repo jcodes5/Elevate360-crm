@@ -21,9 +21,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [token, setToken] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [mounted, setMounted] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (!mounted) return
+
     // Check for existing auth token on mount
     // For now, we'll rely on the API client to handle token management
     // In a real implementation, we would check for HTTP-only cookies on the server
@@ -41,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     setIsLoading(false)
-  }, [])
+  }, [mounted])
 
   const login = (userData: User, authToken: string) => {
     setUser(userData)
@@ -69,9 +76,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     token,
     login,
     logout,
-    isLoading,
-    isAuthenticated: !!user,
-    needsOnboarding: !!user && !user.isOnboardingCompleted,
+    isLoading: isLoading || !mounted,
+    isAuthenticated: mounted ? !!user : false,
+    needsOnboarding: mounted ? !!user && !user.isOnboardingCompleted : false,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

@@ -1,14 +1,8 @@
-
-
 import type { Metadata } from "next"
 import { Inter as FontSans } from "next/font/google"
 import "./globals.css"
 import { cn } from "@/lib/utils"
 import { Providers } from "./providers"
-import { QueryProvider } from "@/components/providers/query-provider"
-import { AuthProvider } from "@/hooks/use-auth"
-import { ThemeProvider } from "@/components/theme-provider"
-import { Toaster } from "@/components/ui/toaster"
 
 const fontSans = FontSans({
   subsets: ["latin"],
@@ -19,24 +13,6 @@ export const metadata: Metadata = {
   title: "Elevate360 CRM - Complete Nigerian Business Solution",
   description:
     "Comprehensive CRM platform for Nigerian businesses with marketing automation, sales pipeline, and customer management.",
-}
-
-export function ClientLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <QueryProvider>
-      <AuthProvider>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          {children}
-          <Toaster />
-        </ThemeProvider>
-      </AuthProvider>
-    </QueryProvider>
-  )
 }
 
 export default function RootLayout({
@@ -52,9 +28,7 @@ export default function RootLayout({
           fontSans.variable
         )}
       >
-        <Providers>
-          <ClientLayout>{children}</ClientLayout>
-        </Providers>
+        <Providers>{children}</Providers>
       </body>
     </html>
   )

@@ -4,10 +4,9 @@ import { cookies } from "next/headers";
 import type { User } from "@/types";
 import { NextRequest } from "next/server";
 
-// JWT Configuration
+// JWT Configuration - Use consistent secrets
 const JWT_ACCESS_SECRET = process.env.JWT_SECRET || "your-access-secret-key";
-const JWT_REFRESH_SECRET =
-  process.env.JWT_REFRESH_SECRET || "your-refresh-secret-key";
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "your-refresh-secret-key";
 const JWT_ACCESS_EXPIRES_IN = "15m"; // 15 minutes
 const JWT_REFRESH_EXPIRES_IN = "7d"; // 7 days
 
@@ -34,7 +33,7 @@ export interface AuthResult {
   tokens: AuthTokens;
 }
 
-export class EnhancedAuthService {
+export class UnifiedAuthService {
   // Password hashing with strong salt rounds
   static async hashPassword(password: string): Promise<string> {
     const saltRounds = 12;
@@ -45,11 +44,16 @@ export class EnhancedAuthService {
     password: string,
     hashedPassword: string
   ): Promise<boolean> {
-    return bcrypt.compare(password, hashedPassword);
+    try {
+      return await bcrypt.compare(password, hashedPassword);
+    } catch (error) {
+      console.error("Password comparison error:", error);
+      return false;
+    }
   }
 
-  // Generate both access and refresh tokens
-  static generateTokens(user: User): AuthTokens {
+  // Generate both access and refresh tokens with consistent secrets
+  static generateTokens(user: User): { token: string; refreshToken: string } {
     const payload: TokenPayload = {
       userId: user.id,
       email: user.email,
@@ -58,7 +62,7 @@ export class EnhancedAuthService {
       isOnboardingCompleted: user.isOnboardingCompleted ?? false,
     };
 
-    const accessToken = jwt.sign(payload, JWT_ACCESS_SECRET, {
+    const token = jwt.sign(payload, JWT_ACCESS_SECRET, {
       expiresIn: JWT_ACCESS_EXPIRES_IN,
       issuer: "elevate360-crm",
       audience: "elevate360-users",
@@ -70,8 +74,14 @@ export class EnhancedAuthService {
       audience: "elevate360-users",
     });
 
+    return { token, refreshToken };
+  }
+
+  // Enhanced token generation with full AuthTokens interface
+  static generateAuthTokens(user: User): AuthTokens {
+    const { token, refreshToken } = this.generateTokens(user);
     return {
-      accessToken,
+      accessToken: token,
       refreshToken,
       expiresIn: 15 * 60, // 15 minutes in seconds
     };
@@ -92,6 +102,11 @@ export class EnhancedAuthService {
       }
       throw new Error("Token verification failed");
     }
+  }
+
+  // Legacy verifyToken method for backward compatibility
+  static verifyToken(token: string): TokenPayload {
+    return this.verifyAccessToken(token);
   }
 
   // Verify refresh token
@@ -138,12 +153,21 @@ export class EnhancedAuthService {
     };
   }
 
+  // Legacy method for backward compatibility
+  static async refreshAccessTokenLegacy(refreshToken: string): Promise<string> {
+    const result = await this.refreshAccessToken(refreshToken);
+    return result.accessToken;
+  }
+
   // Set secure HTTP-only cookies
-  static setAuthCookies(tokens: AuthTokens) {
+  static setAuthCookies(tokens: AuthTokens | { token: string; refreshToken: string }) {
     const cookieStore = cookies();
+    
+    const accessToken = 'accessToken' in tokens ? tokens.accessToken : tokens.token;
+    const refreshToken = tokens.refreshToken;
 
     // Set access token cookie (shorter expiry)
-    cookieStore.set("accessToken", tokens.accessToken, {
+    cookieStore.set("accessToken", accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
@@ -152,7 +176,7 @@ export class EnhancedAuthService {
     });
 
     // Set refresh token cookie (longer expiry)
-    cookieStore.set("refreshToken", tokens.refreshToken, {
+    cookieStore.set("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
@@ -238,129 +262,3 @@ export class EnhancedAuthService {
       errors.push("Password must contain at least one number");
     }
 
-    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
-      errors.push("Password must contain at least one special character");
-    }
-
-    return {
-      isValid: errors.length === 0,
-      errors,
-    };
-  }
-}
-
-// Role hierarchy for permission checking
-export const ROLE_HIERARCHY = {
-  admin: 3,
-  manager: 2,
-  agent: 1,
-} as const;
-
-export type RoleName = keyof typeof ROLE_HIERARCHY;
-
-// Permission checker
-export function hasPermission(userRole: string, requiredRole: string): boolean {
-  const userLevel = ROLE_HIERARCHY[userRole as RoleName] || 0;
-  const requiredLevel = ROLE_HIERARCHY[requiredRole as RoleName] || 0;
-  return userLevel >= requiredLevel;
-}
-
-// Check if user can access resource
-export function canAccessResource(
-  userRole: string,
-  resource: string,
-  action: string
-): boolean {
-  // Define resource permissions
-  const permissions: Record<string, Record<string, string[]>> = {
-    users: {
-      create: ["admin"],
-      read: ["admin", "manager"],
-      update: ["admin"],
-      delete: ["admin"],
-    },
-    contacts: {
-      create: ["admin", "manager", "agent"],
-      read: ["admin", "manager", "agent"],
-      update: ["admin", "manager", "agent"],
-      delete: ["admin", "manager"],
-    },
-    deals: {
-      create: ["admin", "manager", "agent"],
-      read: ["admin", "manager", "agent"],
-      update: ["admin", "manager", "agent"],
-      delete: ["admin", "manager"],
-    },
-    campaigns: {
-      create: ["admin", "manager"],
-      read: ["admin", "manager", "agent"],
-      update: ["admin", "manager"],
-      delete: ["admin", "manager"],
-    },
-    analytics: {
-      read: ["admin", "manager"],
-    },
-    settings: {
-      read: ["admin"],
-      update: ["admin"],
-    },
-  };
-
-  const resourcePermissions = permissions[resource];
-  if (!resourcePermissions) {
-    return false; // Resource doesn't exist
-  }
-
-  const allowedRoles = resourcePermissions[action];
-  if (!allowedRoles) {
-    return false; // Action not defined for resource
-  }
-
-  return allowedRoles.includes(userRole);
-}
-
-// Rate limiting for authentication attempts
-class AuthRateLimiter {
-  private attempts: Map<string, { count: number; lastAttempt: number }> =
-    new Map();
-  private readonly maxAttempts = 5;
-  private readonly windowMs = 15 * 60 * 1000; // 15 minutes
-
-  checkRateLimit(identifier: string): {
-    allowed: boolean;
-    retryAfter?: number;
-  } {
-    const now = Date.now();
-    const attemptData = this.attempts.get(identifier);
-
-    if (!attemptData) {
-      this.attempts.set(identifier, { count: 1, lastAttempt: now });
-      return { allowed: true };
-    }
-
-    // Reset if window has passed
-    if (now - attemptData.lastAttempt > this.windowMs) {
-      this.attempts.set(identifier, { count: 1, lastAttempt: now });
-      return { allowed: true };
-    }
-
-    // Check if max attempts exceeded
-    if (attemptData.count >= this.maxAttempts) {
-      const retryAfter = Math.ceil(
-        (this.windowMs - (now - attemptData.lastAttempt)) / 1000
-      );
-      return { allowed: false, retryAfter };
-    }
-
-    // Increment attempts
-    attemptData.count++;
-    attemptData.lastAttempt = now;
-    return { allowed: true };
-  }
-
-  resetAttempts(identifier: string) {
-    this.attempts.delete(identifier);
-  }
-}
-
-export const authRateLimiter = new AuthRateLimiter();

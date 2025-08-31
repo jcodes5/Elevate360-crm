@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
 // GET /api/campaigns/analytics - Get campaign analytics
 export async function GET_ANALYTICS(request: NextRequest) {
   try {
-    // TODO: Implement actual analytics data retrieval
+    
     const mockAnalytics: CampaignAnalytics = {
       performance: {
         totalCampaigns: 25,

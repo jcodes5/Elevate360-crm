@@ -1,62 +1,76 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { useAuth } from "@/hooks/use-auth"
-import { apiClient } from "@/lib/api-client"
+import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/use-auth";
+import { apiClient } from "@/lib/api-client";
 
 interface ProtectedRouteProps {
-  children: React.ReactNode
+  children: React.ReactNode;
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { isAuthenticated, isLoading, logout } = useAuth()
-  const router = useRouter()
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
+  const { isAuthenticated, isLoading, logout, needsOnboarding } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   useEffect(() => {
     const checkAuth = async () => {
       if (!isLoading) {
         if (isAuthenticated) {
-          // Test if the token is still valid by making a simple API call
+          // Validate token by pinging a lightweight endpoint. If unauthorized, log out.
           try {
-            // This will automatically handle token refresh if needed
-            await apiClient.get("/test")
+            await apiClient.get("/test");
           } catch (error: any) {
             if (error.message === "UNAUTHORIZED") {
-              // Token is invalid or expired, log out the user
-              await logout()
+              await logout();
+              router.push("/auth/login");
+              return;
             }
           }
+
+          // If user needs onboarding and is not already on the onboarding page, redirect.
+          if (needsOnboarding) {
+            if (!pathname?.startsWith("/onboarding")) {
+              router.push("/onboarding");
+              return;
+            }
+          }
+        } else {
+          // Not authenticated: redirect to login unless already on an auth route
+          const publicPaths = [
+            "/auth/login",
+            "/auth/register",
+            "/auth/register-enhanced",
+            "/auth/login-enhanced",
+          ];
+          const isPublic = publicPaths.some((p) => pathname?.startsWith(p));
+          if (!isPublic) {
+            router.push("/auth/login");
+            return;
+          }
         }
-        setIsCheckingAuth(false)
+
+        setIsCheckingAuth(false);
       }
-    }
-    
-    checkAuth()
-  }, [isAuthenticated, isLoading, logout, router])
+    };
 
-  // During loading, we should still allow the login page to render
+    checkAuth();
+    // We intentionally only depend on these values
+  }, [
+    isAuthenticated,
+    isLoading,
+    logout,
+    needsOnboarding,
+    pathname,
+    router,
+  ]);
+
+  // While we check auth, render a consistent wrapper to avoid DOM conflicts
   if (isLoading || isCheckingAuth) {
-    // Allow login page to render during loading
-    // Check if we're on the client side before accessing window
-    if (typeof window !== 'undefined') {
-      return <>{children}</>
-    }
-    // On server side, render nothing during loading
-    return null
+    return <div style={{ display: 'none' }} />;
   }
 
-  // If not authenticated, redirect to login page
-  if (!isAuthenticated) {
-    // If we're on the login page, allow rendering
-    // Check if we're on the client side before accessing window
-    if (typeof window !== 'undefined') {
-      return <>{children}</>
-    }
-    // On server side, render children for unauthenticated users
-    return <>{children}</>
-  }
-
-  return <>{children}</>
+  return <>{children}</>;
 }
