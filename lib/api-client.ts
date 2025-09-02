@@ -1,17 +1,45 @@
 import type { ApiResponse, PaginationParams } from "@/types";
-import { useRouter } from "next/navigation";
 
 class ApiClient {
   private baseUrl: string;
   private token: string | null = null;
 
-  // Public getter for debugging
-  get currentToken(): string | null {
-    return this.token;
-  }
-
   constructor(baseUrl = "/api") {
     this.baseUrl = baseUrl;
+  }
+
+  // Read access token from cookies
+  private getTokenFromCookies(): string | null {
+    if (typeof document === 'undefined') return null;
+    
+    const cookies = document.cookie.split(';');
+    const tokenCookie = cookies.find(cookie => 
+      cookie.trim().startsWith('accessToken=')
+    );
+    
+    if (tokenCookie) {
+      return tokenCookie.split('=')[1];
+    }
+    
+    return null;
+  }
+
+  // Get current token (from memory or cookies)
+  private getCurrentToken(): string | null {
+    return this.token || this.getTokenFromCookies();
+  }
+
+  // Public getter for debugging
+  get currentToken(): string | null {
+    return this.getCurrentToken();
+  }
+
+  setToken(token: string) {
+    this.token = token;
+  }
+
+  clearToken() {
+    this.token = null;
   }
 
   private async checkNetworkConnectivity(): Promise<void> {
@@ -26,20 +54,13 @@ class ApiClient {
     }
   }
 
-  setToken(token: string) {
-    this.token = token;
-  }
-
-  clearToken() {
-    this.token = null;
-  }
-
   private async refreshAccessToken(): Promise<string | null> {
     try {
-      // Make a request to refresh endpoint, cookies will be sent automatically
+      console.log("🔄 Attempting token refresh...");
+      
       const response = await fetch(`${this.baseUrl}/auth/refresh`, {
         method: "POST",
-        credentials: "include", // Include cookies
+        credentials: "include", // Include cookies for refresh token
         headers: {
           "Content-Type": "application/json",
         },
@@ -47,12 +68,18 @@ class ApiClient {
 
       if (response.ok) {
         const data = await response.json();
+        console.log("✅ Token refresh response:", data);
+        
         if (data.success && data.data?.accessToken) {
+          // Update in-memory token
+          this.setToken(data.data.accessToken);
           return data.data.accessToken;
         }
+      } else {
+        console.error("❌ Token refresh failed:", response.status, response.statusText);
       }
     } catch (error) {
-      console.error("Token refresh failed:", error);
+      console.error("❌ Token refresh error:", error);
     }
     return null;
   }
@@ -77,9 +104,14 @@ class ApiClient {
     };
     const headers = new Headers(headersInit);
 
+    // Get current token (memory or cookies)
+    const currentToken = this.getCurrentToken();
+    console.log(`[${requestId}] Current token available:`, !!currentToken);
+
     // Add Authorization header if we have a token
-    if (this.token) {
-      headers.set("Authorization", `Bearer ${this.token}`);
+    if (currentToken) {
+      headers.set("Authorization", `Bearer ${currentToken}`);
+      console.log(`[${requestId}] Added Authorization header`);
     }
 
     try {
@@ -91,31 +123,25 @@ class ApiClient {
       // Check network connectivity
       await this.checkNetworkConnectivity();
 
-      // Check if fetch is available
-      if (typeof fetch === "undefined") {
-        throw new Error("Fetch is not available in this environment");
-      }
-
-      console.log(
-        `[${requestId}] Making fetch request to:`,
-        url,
-        "with headers:",
-        headers
-      );
+      console.log(`[${requestId}] Making request with headers:`, Array.from(headers.entries()));
 
       let response = await fetch(url, {
         ...options,
         headers,
-        // Add credentials to handle cookies if needed
-        credentials: "include", // Always include cookies for authentication
+        credentials: "include", // Always include cookies
       });
 
+      console.log(`[${requestId}] Response status:`, response.status);
+
+      // Handle 401 - try token refresh
       if (response.status === 401) {
+        console.log(`[${requestId}] Received 401, attempting token refresh...`);
+        
         const newToken = await this.refreshAccessToken();
         if (newToken) {
-          this.setToken(newToken);
+          console.log(`[${requestId}] Token refresh successful, retrying request...`);
+          
           // Retry the request with new token
-          // Clone existing headers and set new Authorization
           const retryHeaders = new Headers(headers);
           retryHeaders.set("Authorization", `Bearer ${newToken}`);
 
@@ -124,184 +150,87 @@ class ApiClient {
             headers: retryHeaders,
             credentials: "include",
           });
+          
+          console.log(`[${requestId}] Retry response status:`, response.status);
         } else {
-          // If refresh failed, clear token and redirect to login
+          console.log(`[${requestId}] Token refresh failed, redirecting to login...`);
+          // Clear token and redirect to login
           this.clearToken();
-          // In a real implementation, we would redirect to login here
-          // but we can't do that directly from this class
+          if (typeof window !== 'undefined') {
+            window.location.href = '/auth/login?reason=session_expired';
+          }
+          throw new Error("Session expired. Please log in again.");
         }
       }
-
-      console.log(
-        `[${requestId}] Response status:`,
-        response.status,
-        "statusText:",
-        response.statusText
-      );
 
       let data: any;
 
-      // Parse response based on content type
+      // Parse response
       const contentType = response.headers.get("content-type");
       console.log(`[${requestId}] Response content-type:`, contentType);
-      console.log(`[${requestId}] Response body used?`, response.bodyUsed);
 
       try {
-        // Check if response body has already been consumed
         if (response.bodyUsed) {
-          console.warn(
-            `[${requestId}] Response body has already been consumed! Using fallback...`
-          );
+          console.warn(`[${requestId}] Response body already consumed`);
           data = response.ok
-            ? {
-                success: true,
-                message: "Request completed successfully",
-                data: {},
-              }
-            : {
-                success: false,
-                message: `HTTP ${response.status}: ${response.statusText}`,
-              };
+            ? { success: true, message: "Request completed successfully", data: {} }
+            : { success: false, message: `HTTP ${response.status}: ${response.statusText}` };
         } else {
-          // Try to read response as text first
-          let responseText: string;
-          try {
-            responseText = await response.text();
-            console.log(
-              `[${requestId}] Response text (first 500 chars):`,
-              responseText.substring(0, 500)
-            );
-          } catch (textError) {
-            console.error(
-              `[${requestId}] Failed to read response text:`,
-              textError
-            );
-            throw new Error(
-              `Failed to read response: ${
-                textError instanceof Error ? textError.message : "Unknown error"
-              }`
-            );
-          }
+          const responseText = await response.text();
+          console.log(`[${requestId}] Response text length:`, responseText.length);
 
-          // Parse the response text
           if (!responseText) {
-            console.log(`[${requestId}] Empty response, using empty object`);
             data = {};
           } else {
-            // Always try to parse as JSON first if it looks like JSON
             const trimmedText = responseText.trim();
             if (trimmedText.startsWith("{") || trimmedText.startsWith("[")) {
               try {
-                console.log(`[${requestId}] Attempting to parse as JSON`);
                 data = JSON.parse(responseText);
-                console.log(`[${requestId}] Successfully parsed JSON:`, data);
+                console.log(`[${requestId}] Parsed JSON response`);
               } catch (jsonError) {
-                console.warn(
-                  `[${requestId}] Failed to parse as JSON:`,
-                  jsonError
-                );
-                console.warn(`[${requestId}] Raw response:`, responseText);
-                data = {
-                  success: false,
-                  message: responseText,
-                  rawResponse: true,
-                };
+                console.warn(`[${requestId}] JSON parse error:`, jsonError);
+                data = { success: false, message: responseText, rawResponse: true };
               }
             } else {
-              console.log(
-                `[${requestId}] Non-JSON response, wrapping in message`
-              );
-              data = {
-                success: false,
-                message: responseText,
-                rawResponse: true,
-              };
+              data = { success: false, message: responseText, rawResponse: true };
             }
           }
         }
-
-        console.log(`[${requestId}] Final parsed data:`, data);
       } catch (parseError) {
-        console.error(
-          `[${requestId}] Critical error parsing response:`,
-          parseError
-        );
-        throw new Error(
-          `Failed to parse server response: ${
-            parseError instanceof Error ? parseError.message : "Unknown error"
-          }`
-        );
+        console.error(`[${requestId}] Parse error:`, parseError);
+        throw new Error(`Failed to parse server response: ${parseError instanceof Error ? parseError.message : "Unknown error"}`);
       }
 
       if (!response.ok) {
-        const errorMessage =
-          data?.message ||
-          data?.error ||
-          `HTTP ${response.status}: ${response.statusText}`;
-        console.error(
-          `[${requestId}] API request failed with status:`,
-          response.status,
-          "data:",
-          data
-        );
-        console.error(`[${requestId}] Error message:`, errorMessage);
-
-        // If it's an auth error, throw a specific error
+        const errorMessage = data?.message || data?.error || `HTTP ${response.status}: ${response.statusText}`;
+        console.error(`[${requestId}] Request failed:`, errorMessage);
+        
         if (response.status === 401) {
           throw new Error("UNAUTHORIZED");
         }
-
+        
         throw new Error(errorMessage);
       }
 
-      console.log(`[${requestId}] API request successful:`, data);
+      console.log(`[${requestId}] Request successful`);
       return data;
     } catch (error) {
-      console.error(`[${requestId}] API request failed:`, {
-        url,
-        method: options.method || "GET",
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        type: typeof error,
-        errorConstructor: error?.constructor?.name,
-      });
+      console.error(`[${requestId}] Request error:`, error);
 
-      // Provide more specific error messages
-      if (
-        error instanceof TypeError &&
-        error.message.includes("Failed to fetch")
-      ) {
-        throw new Error(
-          "Network error: Unable to connect to server. Please check your internet connection and try again."
-        );
+      if (error instanceof TypeError && error.message.includes("Failed to fetch")) {
+        throw new Error("Network error: Unable to connect to server. Please check your internet connection and try again.");
       }
 
-      // Handle reference errors (like the text is not defined error)
-      if (error instanceof ReferenceError) {
-        console.error(
-          `[${requestId}] Reference error in API client:`,
-          error.message
-        );
-        throw new Error(`API client error: ${error.message}`);
-      }
-
-      // Handle specific error types
       if (error instanceof Error) {
         throw error;
       }
 
-      // Handle non-Error objects
-      throw new Error(
-        typeof error === "string" ? error : "An unexpected error occurred"
-      );
+      throw new Error(typeof error === "string" ? error : "An unexpected error occurred");
     }
   }
 
   // Generic CRUD methods
-  async get<T>(
-    endpoint: string,
-    params?: PaginationParams
-  ): Promise<ApiResponse<T[]>> {
+  async get<T>(endpoint: string, params?: PaginationParams): Promise<ApiResponse<T[]>> {
     const searchParams = new URLSearchParams();
 
     if (params) {
@@ -329,22 +258,14 @@ class ApiClient {
     });
   }
 
-  async put<T>(
-    endpoint: string,
-    id: string,
-    data: any
-  ): Promise<ApiResponse<T>> {
+  async put<T>(endpoint: string, id: string, data: any): Promise<ApiResponse<T>> {
     return this.request<T>(`${endpoint}/${id}`, {
       method: "PUT",
       body: JSON.stringify(data),
     });
   }
 
-  async patch<T>(
-    endpoint: string,
-    id: string,
-    data: any
-  ): Promise<ApiResponse<T>> {
+  async patch<T>(endpoint: string, id: string, data: any): Promise<ApiResponse<T>> {
     return this.request<T>(`${endpoint}/${id}`, {
       method: "PATCH",
       body: JSON.stringify(data),
@@ -358,55 +279,103 @@ class ApiClient {
   }
 
   // Authentication methods
-  async login(email: string, password: string) {
-    const response = await this.request<{ token?: string; accessToken?: string }>(
-      "/auth/login",
-      {
-        method: "POST",
-        body: JSON.stringify({ email, password }),
-      }
-    );
+  async login(email: string, password: string, rememberMe = false) {
+    console.log("🔐 Attempting login...");
+    
+    const response = await this.request<{ 
+      token?: string; 
+      accessToken?: string; 
+      user?: any 
+    }>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password, rememberMe }),
+    });
 
-    // Set the token if we get one back from login
-    const token = response?.data?.token ?? response?.data?.accessToken;
-    if (response.success && token) {
-      this.setToken(token);
+    console.log("✅ Login response:", response);
+
+    // The tokens will be set in cookies by the server
+    // We don't need to set them manually anymore
+    if (response.success) {
+      // Wait a bit for cookies to be set
+      setTimeout(() => {
+        const cookieToken = this.getTokenFromCookies();
+        if (cookieToken) {
+          console.log("✅ Token found in cookies after login");
+        } else {
+          console.warn("⚠️ No token found in cookies after login");
+        }
+      }, 100);
     }
 
     return response;
   }
 
   async register(userData: any) {
-    const response = await this.request<{ token?: string; accessToken?: string }>(
-      "/auth/register",
-      {
-        method: "POST",
-        body: JSON.stringify(userData),
-      }
-    );
+    console.log("📝 Attempting registration...");
+    
+    const response = await this.request<{ 
+      token?: string; 
+      accessToken?: string; 
+      user?: any 
+    }>("/auth/register", {
+      method: "POST",
+      body: JSON.stringify(userData),
+    });
 
-    // Set the token if we get one back from registration
-    const token = response?.data?.token ?? response?.data?.accessToken;
-    if (response.success && token) {
-      this.setToken(token);
-    }
+    console.log("✅ Registration response:", response);
 
+    // Tokens will be set in cookies by the server
     return response;
   }
 
-  async refreshToken(refreshToken: string) {
+  async refreshToken(refreshToken?: string) {
     return this.request("/auth/refresh", {
       method: "POST",
-      body: JSON.stringify({ refreshToken }),
+      body: refreshToken ? JSON.stringify({ refreshToken }) : undefined,
     });
   }
 
   async logout() {
+    console.log("🚪 Logging out...");
+    
     this.clearToken();
-    return this.request("/auth/logout", {
+    
+    try {
+      const response = await this.request("/auth/logout", {
+        method: "POST",
+      });
+      console.log("✅ Logout response:", response);
+      return response;
+    } catch (error) {
+      console.warn("⚠️ Logout request failed, but clearing local state anyway:", error);
+      // Even if logout fails, clear local state
+      return { success: true, message: "Logged out locally" };
+    }
+  }
+
+  // Complete onboarding
+  async completeOnboarding(onboardingData: any) {
+    console.log("📋 Completing onboarding...");
+    
+    return this.request("/users/complete-onboarding", {
       method: "POST",
+      body: JSON.stringify({
+        onboardingData,
+        isOnboardingCompleted: true,
+      }),
     });
   }
 }
 
 export const apiClient = new ApiClient();
+
+// Initialize token from cookies on page load
+if (typeof window !== 'undefined') {
+  // Give the page a moment to load before checking cookies
+  setTimeout(() => {
+    const token = apiClient.currentToken;
+    if (token) {
+      console.log("🔄 Found existing token in cookies");
+    }
+  }, 100);
+}

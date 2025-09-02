@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Inter as FontSans } from "next/font/google";
 import "../globals.css";
 import { cn } from "@/lib/utils";
-import { AuthSplitLayout } from "@/components/auth/auth-split-layout";
 
 const fontSans = FontSans({
   subsets: ["latin"],
@@ -23,7 +22,7 @@ export default function AuthLayout({
     <div
       className={cn("bg-background font-sans antialiased", fontSans.variable)}
     >
-      <AuthSplitLayout>{children}</AuthSplitLayout>
+      {children}
     </div>
   );
 }

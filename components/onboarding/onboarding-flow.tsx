@@ -167,15 +167,24 @@ export function OnboardingFlow() {
       console.log("Current API client token:", apiClient.currentToken ? "Present" : "Missing")
 
       // Save onboarding data
-      const response = await apiClient.post('/users/complete-onboarding', {
+      const response = await apiClient.post<{ 
+        user?: User; 
+        tokens?: { accessToken: string } 
+      }>('/users/complete-onboarding', {
         onboardingData: data,
         isOnboardingCompleted: true
       })
 
       console.log("Onboarding completion response:", response)
 
-      // Update auth context with the new user data
-      if (response.data?.user) {
+      // Update auth context with the new user data and tokens
+      if (response.data?.user && response.data?.tokens) {
+        // Set the new token in the API client
+        apiClient.setToken(response.data.tokens.accessToken)
+        // Update auth context
+        login(response.data.user, response.data.tokens.accessToken)
+      } else if (response.data?.user) {
+        // Fallback if tokens are not returned
         login(response.data.user, apiClient.currentToken || "")
       }
 

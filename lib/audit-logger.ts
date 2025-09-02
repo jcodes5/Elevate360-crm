@@ -36,6 +36,12 @@ export async function logAuditEvent(
     details?: Record<string, any>;
   }
 ) {
+  // Validate required fields before creating log
+  if (!request || !eventType || !details || !details.status) {
+    console.error("Invalid audit event parameters");
+    return;
+  }
+
   const entry: AuditLogEntry = {
     eventType,
     userId: details.userId,
@@ -55,6 +61,12 @@ export async function logAuditEvent(
     await db.create("audit_logs", entry);
   } catch (error) {
     console.error("Failed to write audit log:", error);
+    
+    // Only log to console in development environment
+    if (process.env.NODE_ENV === "development") {
+      console.warn("Audit log entry (fallback):", JSON.stringify(entry, null, 2));
+    }
+    
     // Don't throw - audit logging should not break the main flow
   }
 }

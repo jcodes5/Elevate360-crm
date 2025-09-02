@@ -25,6 +25,68 @@ interface AuthContextType extends AuthSession {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+// Real-time session monitoring
+class SessionMonitor {
+  private checkInterval: NodeJS.Timeout | null = null
+  private activityListeners: Set<() => void> = new Set()
+  private lastActivity = Date.now()
+
+  start(onSessionExpired: () => void, onActivity: () => void) {
+    // Monitor session every 30 seconds
+    this.checkInterval = setInterval(async () => {
+      try {
+        const response = await fetch("/api/auth/verify", {
+          method: "POST",
+          credentials: "include",
+        })
+        
+        if (!response.ok) {
+          onSessionExpired()
+        }
+      } catch (error) {
+        console.warn("Session check failed:", error)
+      }
+    }, 30000)
+
+    // Monitor user activity
+    const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click']
+    
+    const handleActivity = () => {
+      const now = Date.now()
+      if (now - this.lastActivity > 60000) { // Only update every minute
+        this.lastActivity = now
+        onActivity()
+      }
+    }
+
+    activityEvents.forEach(event => {
+      document.addEventListener(event, handleActivity, true)
+    })
+
+    this.cleanup = () => {
+      activityEvents.forEach(event => {
+        document.removeEventListener(event, handleActivity, true)
+      })
+    }
+  }
+
+  private cleanup?: () => void
+
+  stop() {
+    if (this.checkInterval) {
+      clearInterval(this.checkInterval)
+      this.checkInterval = null
+    }
+    if (this.cleanup) {
+      this.cleanup()
+    }
+  }
+
+  getLastActivity() {
+    return this.lastActivity
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<AuthSession>({
     user: null,
@@ -37,6 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   })
   
   const [mounted, setMounted] = useState(false)
+  const [sessionMonitor] = useState(() => new SessionMonitor())
   const router = useRouter()
 
   // Initialize session on mount
@@ -45,23 +108,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initializeSession()
   }, [])
 
+  // Start session monitoring when authenticated
+  useEffect(() => {
+    if (session.isAuthenticated && mounted) {
+      sessionMonitor.start(handleSessionExpired, handleActivity)
+    } else {
+      sessionMonitor.stop()
+    }
+
+    return () => sessionMonitor.stop()
+  }, [session.isAuthenticated, mounted])
+
   const initializeSession = async () => {
     try {
-      console.log("🔄 Initializing session...")
-      
-      // Try to get token from cookies first
-      const cookies = document.cookie.split(';')
-      const tokenCookie = cookies.find(c => c.trim().startsWith('accessToken='))
-      
-      if (!tokenCookie) {
-        console.log("❌ No access token found in cookies")
-        setSession(prev => ({ ...prev, isLoading: false }))
-        return
-      }
-
-      console.log("✅ Found access token in cookies")
-      
-      // Verify session with server
       const response = await fetch("/api/auth/verify", {
         method: "POST",
         credentials: "include",
@@ -69,8 +128,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (response.ok) {
         const data = await response.json()
-        console.log("✅ Session verification successful:", data)
-        
         if (data.success && data.data.user) {
           setSession(prev => ({
             ...prev,
@@ -82,27 +139,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             isLoading: false,
           }))
         } else {
-          console.log("❌ Session verification failed:", data)
           setSession(prev => ({ ...prev, isLoading: false }))
         }
       } else {
-        console.log("❌ Session verification request failed:", response.status)
         setSession(prev => ({ ...prev, isLoading: false }))
       }
     } catch (error) {
-      console.error("❌ Session initialization failed:", error)
+      console.error("Session initialization failed:", error)
       setSession(prev => ({ ...prev, isLoading: false }))
     }
   }
 
   const login = useCallback((user: User, tokens: any, sessionInfo: any) => {
-    console.log("✅ Auth context - login called with user:", user.id)
-    
     setSession(prev => ({
       ...prev,
       user,
       isAuthenticated: true,
-      sessionId: tokens.sessionId || 'session_' + Date.now(),
+      sessionId: tokens.sessionId,
       needsOnboarding: !user.isOnboardingCompleted,
       lastActivity: Date.now(),
       activeSessions: 1,
@@ -110,17 +163,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }))
 
     // Store user data in sessionStorage for persistence across tabs
-    try {
-      sessionStorage.setItem("authUser", JSON.stringify(user))
-      console.log("✅ User data stored in sessionStorage")
-    } catch (error) {
-      console.warn("⚠️ Failed to store user in sessionStorage:", error)
-    }
+    sessionStorage.setItem("authUser", JSON.stringify(user))
+    sessionStorage.setItem("sessionId", tokens.sessionId)
   }, [])
 
   const logout = useCallback(async () => {
-    console.log("🚪 Auth context - logout called")
-    
     try {
       const response = await fetch("/api/auth/logout", {
         method: "POST",
@@ -131,12 +178,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
 
       if (!response.ok) {
-        console.warn("⚠️ Logout request failed, clearing local session anyway")
-      } else {
-        console.log("✅ Logout request successful")
+        console.warn("Logout request failed, clearing local session anyway")
       }
     } catch (error) {
-      console.error("❌ Logout error:", error)
+      console.error("Logout error:", error)
     } finally {
       // Always clear local session
       setSession({
@@ -149,22 +194,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         activeSessions: 0,
       })
       
-      // Clear storage
-      try {
-        sessionStorage.removeItem("authUser")
-        localStorage.removeItem("authUser")
-      } catch (error) {
-        console.warn("⚠️ Failed to clear storage:", error)
-      }
+      sessionStorage.removeItem("authUser")
+      sessionStorage.removeItem("sessionId")
+      sessionMonitor.stop()
       
-      // Redirect to login
       router.push("/auth/login")
     }
   }, [router])
 
   const logoutAllSessions = useCallback(async () => {
-    console.log("🚪 Auth context - logout all sessions called")
-    
     try {
       const response = await fetch("/api/auth/logout-all", {
         method: "POST",
@@ -172,19 +210,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
 
       if (response.ok) {
-        console.log("✅ Logout all sessions successful")
         await logout()
       }
     } catch (error) {
-      console.error("❌ Logout all sessions error:", error)
+      console.error("Logout all sessions error:", error)
       await logout()
     }
   }, [logout])
 
   const refreshToken = useCallback(async (): Promise<boolean> => {
     try {
-      console.log("🔄 Refreshing token...")
-      
       const response = await fetch("/api/auth/refresh", {
         method: "POST",
         credentials: "include",
@@ -192,8 +227,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (response.ok) {
         const data = await response.json()
-        console.log("✅ Token refresh successful")
-        
         if (data.success) {
           setSession(prev => ({
             ...prev,
@@ -201,13 +234,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }))
           return true
         }
-      } else {
-        console.log("❌ Token refresh failed:", response.status)
       }
       
       return false
     } catch (error) {
-      console.error("❌ Token refresh error:", error)
+      console.error("Token refresh failed:", error)
       return false
     }
   }, [])
@@ -253,10 +284,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       return false
     } catch (error) {
-      console.error("❌ Session check failed:", error)
+      console.error("Session check failed:", error)
       return false
     }
   }, [])
+
+  const handleSessionExpired = useCallback(() => {
+    console.warn("Session expired, redirecting to login")
+    logout()
+  }, [logout])
+
+  const handleActivity = useCallback(() => {
+    updateActivity()
+  }, [updateActivity])
 
   // Handle tab visibility change
   useEffect(() => {
@@ -292,11 +332,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkSession,
   }
 
-  // Don't render children until we've checked for existing session
-  if (!mounted) {
-    return null
-  }
-
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
@@ -319,7 +354,7 @@ export function useSession() {
     sessionId,
     lastActivity: new Date(lastActivity),
     activeSessions,
-    isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
+    isOnline: navigator.onLine,
   }
 }
 

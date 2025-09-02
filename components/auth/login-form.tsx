@@ -68,7 +68,7 @@ const Icons = {
 const formSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   password: z.string().min(1, "Password is required"),
-  rememberMe: z.boolean().default(false),
+  rememberMe: z.boolean(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -105,8 +105,16 @@ export function LoginForm() {
       }
 
       // Update auth context
-      login(result.data);
+      login(result.data.user, {
+        accessToken: result.data.token,
+        sessionId: result.data.sessionId
+      }, {
+        sessionId: result.data.sessionId
+      });
 
+      // Set cookies for authentication persistence
+      document.cookie = `accessToken=${result.data.token}; path=/; max-age=${15 * 60}; SameSite=Lax`;
+      
       // Show success message
       // toast({
       //   title: "Welcome back!",

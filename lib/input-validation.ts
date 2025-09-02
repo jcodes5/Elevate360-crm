@@ -32,6 +32,17 @@ export function validateAndSanitizeInput(input: Record<string, any>) {
     }
   }
 
+  // Password validation
+  if (input.password) {
+    if (typeof input.password !== "string") {
+      errors.push("Password must be a string");
+    } else {
+      sanitized.password = input.password;
+    }
+  } else {
+    errors.push("Password is required");
+  }
+
   // Name validation and sanitization
   if (input.firstName) {
     if (typeof input.firstName !== "string") {
@@ -50,7 +61,7 @@ export function validateAndSanitizeInput(input: Record<string, any>) {
     } else {
       sanitized.lastName = sanitizeString(input.lastName);
       if (sanitized.lastName.length < 1) {
-        errors.push("Last name is required");
+        errors.push("Last name is required" as any);
       }
     }
   }
@@ -61,7 +72,8 @@ export function validateAndSanitizeInput(input: Record<string, any>) {
       errors.push("Role must be a string");
     } else {
       const role = input.role.toLowerCase();
-      if (!AUTH_CONFIG.roles.valid.includes(role)) {
+      const validRoles = AUTH_CONFIG.roles.valid as readonly string[];
+      if (!validRoles.includes(role)) {
         errors.push("Invalid role specified");
       } else {
         sanitized.role = role;

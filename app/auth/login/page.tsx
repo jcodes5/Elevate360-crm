@@ -1,13 +1,14 @@
-import { LoginForm } from "@/components/auth/login-form"
-import { AuthSplitLayout } from "@/components/auth/auth-split-layout"
+import { DualLayout } from "@/components/auth/dual-layout";
+import { EnhancedLoginForm } from "@/components/auth/enhanced-login-form";
 
 export default function LoginPage() {
   return (
-    <AuthSplitLayout
+    <DualLayout
+      type="login"
       title="Welcome Back"
-      subtitle="Sign in to your Elevate360 CRM account to continue"
+      subtitle="Sign in to your Elevate360 CRM account and continue building meaningful customer relationships."
     >
-      <LoginForm />
-    </AuthSplitLayout>
-  )
+      <EnhancedLoginForm />
+    </DualLayout>
+  );
 }

@@ -1,69 +1,147 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { EnhancedAuthService } from "@/lib/auth-enhanced";
 import { db } from "@/lib/database-config";
-import { csrfProtection } from "@/lib/csrf-protection";
 import { validateAndSanitizeInput } from "@/lib/input-validation";
 import { logAuditEvent, AuditEventType } from "@/lib/audit-logger";
 import { AUTH_CONFIG } from "@/lib/auth-config";
-import { rateLimiter } from "@/lib/rate-limiter";
+import { authRateLimiter } from "@/lib/enhanced-rate-limiter";
+import { validateCsrfToken } from "../csrf-token/route";
 import type { User } from "@/types";
 
-// Password validation function
+// Enhanced password validation
 function validatePasswordStrength(password: string): {
   isValid: boolean;
   errors: string[];
+  score: number;
 } {
   const errors: string[] = [];
   const config = AUTH_CONFIG.security.passwords;
+  let score = 0;
 
-  if (password.length < config.minLength) {
-    errors.push(
-      `Password must be at least ${config.minLength} characters long`
-    );
+  // Check if password is provided and is a string
+  if (!password || typeof password !== 'string') {
+    errors.push("Password is required");
+    return {
+      isValid: false,
+      errors,
+      score
+    };
   }
 
-  if (config.requireUppercase && !/[A-Z]/.test(password)) {
+  // Length check
+  if (password.length >= config.minLength) {
+    score += 20;
+  } else {
+    errors.push(`Password must be at least ${config.minLength} characters long`);
+  }
+
+  // Character type checks
+  if (config.requireUppercase && /[A-Z]/.test(password)) {
+    score += 15;
+  } else if (config.requireUppercase) {
     errors.push("Password must contain at least one uppercase letter");
   }
 
-  if (config.requireLowercase && !/[a-z]/.test(password)) {
+  if (config.requireLowercase && /[a-z]/.test(password)) {
+    score += 15;
+  } else if (config.requireLowercase) {
     errors.push("Password must contain at least one lowercase letter");
   }
 
-  if (config.requireNumbers && !/[0-9]/.test(password)) {
+  if (config.requireNumbers && /[0-9]/.test(password)) {
+    score += 15;
+  } else if (config.requireNumbers) {
     errors.push("Password must contain at least one number");
   }
 
-  if (
-    config.requireSpecial &&
-    !new RegExp(`[${config.specialChars}]`).test(password)
-  ) {
+  if (config.requireSpecial && new RegExp(`[${config.specialChars}]`).test(password)) {
+    score += 15;
+  } else if (config.requireSpecial) {
     errors.push("Password must contain at least one special character");
   }
 
+  // Additional strength checks
+  if (password.length >= 12) score += 10; // Bonus for longer passwords
+  if (/(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])/.test(password)) score += 10; // Mixed case + numbers
+  if (!/(.)\1{2,}/.test(password)) score += 10; // No repeated characters
+
   return {
-    isValid: errors.length === 0,
+    isValid: errors.length === 0 && score >= 60,
     errors,
+    score: Math.min(100, score),
   };
 }
 
-// Role validation function
-function validateRole(role: string): boolean {
-  return AUTH_CONFIG.roles.valid.includes(role.toLowerCase() as any);
+// Email domain validation
+function validateEmailDomain(email: string): boolean {
+  const allowedDomains = [
+    // Common business email providers
+    "gmail.com", "outlook.com", "hotmail.com", "yahoo.com",
+    "company.com", "business.com", "enterprise.com"
+  ];
+  
+  const domain = email.split("@")[1]?.toLowerCase();
+  if (!domain) return false;
+  
+  // Allow any domain for now, but log suspicious ones
+  const isSuspicious = domain.includes("tempmail") || domain.includes("10minute");
+  if (isSuspicious) {
+    console.warn(`Suspicious email domain detected: ${domain}`);
+  }
+  
+  return true;
+}
+
+// Role validation with business logic
+function validateUserRole(role: string, email: string): { isValid: boolean; adjustedRole: string } {
+  const normalizedRole = role.toLowerCase();
+  
+  if (!AUTH_CONFIG.roles.valid.includes(normalizedRole as any)) {
+    return { isValid: false, adjustedRole: AUTH_CONFIG.roles.default };
+  }
+  
+  // Business logic: Only certain email domains can register as admin
+  if (normalizedRole === "admin") {
+    const domain = email.split("@")[1]?.toLowerCase();
+    const allowedAdminDomains = ["company.com", "yourdomain.com"]; // Configure these
+    
+    if (!allowedAdminDomains.includes(domain || "")) {
+      console.warn(`Admin registration attempt from non-authorized domain: ${domain}`);
+      return { isValid: true, adjustedRole: "manager" }; // Downgrade to manager
+    }
+  }
+  
+  return { isValid: true, adjustedRole: normalizedRole };
 }
 
 export async function POST(request: NextRequest) {
   try {
-    // Check rate limit
-    const rateLimitResponse = await rateLimiter(request);
+    // Enhanced rate limiting
+    const rateLimitResponse = await authRateLimiter.check(request);
     if (rateLimitResponse) return rateLimitResponse;
 
-    // Check CSRF token
-    const csrfResponse = await csrfProtection(request);
-    if (csrfResponse) return csrfResponse;
+    // CSRF protection (skip in development for now)
+    if (process.env.NODE_ENV === "production") {
+      const csrfToken = request.headers.get("x-csrf-token");
+      const sessionId = request.cookies.get("sessionId")?.value;
 
-    // Get request body and validate/sanitize inputs
+      if (!csrfToken || !sessionId || !validateCsrfToken(sessionId, csrfToken)) {
+        await logAuditEvent(request, AuditEventType.REGISTER_FAILURE, {
+          status: "failure",
+          details: { reason: "CSRF token validation failed" },
+        });
+
+        return NextResponse.json(
+          { success: false, message: "Invalid or missing CSRF token" },
+          { status: 403 }
+        );
+      }
+    }
+
+    // Get and validate request body
     const requestBody = await request.json();
+    
+    // Enhanced input validation
     const {
       sanitized,
       errors: validationErrors,
@@ -74,11 +152,15 @@ export async function POST(request: NextRequest) {
       await logAuditEvent(request, AuditEventType.REGISTER_FAILURE, {
         email: requestBody.email,
         status: "failure",
-        details: { errors: validationErrors },
+        details: { errors: validationErrors, reason: "Input validation failed" },
       });
 
       return NextResponse.json(
-        { success: false, message: "Invalid input", errors: validationErrors },
+        { 
+          success: false, 
+          message: "Invalid input data", 
+          errors: validationErrors.map(error => ({ field: "general", message: error }))
+        },
         { status: 400 }
       );
     }
@@ -92,21 +174,44 @@ export async function POST(request: NextRequest) {
       organizationName,
     } = sanitized;
 
-    // Validate role
-    if (!validateRole(role)) {
+    // Enhanced email validation
+    if (!validateEmailDomain(email)) {
       await logAuditEvent(request, AuditEventType.REGISTER_FAILURE, {
         email,
         status: "failure",
-        details: { reason: "Invalid role" },
+        details: { reason: "Invalid email domain" },
       });
 
       return NextResponse.json(
-        { success: false, message: "Invalid role specified" },
+        { 
+          success: false, 
+          message: "Invalid email domain",
+          errors: [{ field: "email", message: "Please use a valid business email address" }]
+        },
         { status: 400 }
       );
     }
 
-    // Validate password strength
+    // Enhanced role validation
+    const roleValidation = validateUserRole(role, email);
+    if (!roleValidation.isValid) {
+      await logAuditEvent(request, AuditEventType.REGISTER_FAILURE, {
+        email,
+        status: "failure",
+        details: { reason: "Invalid role specified" },
+      });
+
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: "Invalid role specified",
+          errors: [{ field: "role", message: "Please select a valid role" }]
+        },
+        { status: 400 }
+      );
+    }
+
+    // Enhanced password validation
     const passwordValidation = validatePasswordStrength(password);
     if (!passwordValidation.isValid) {
       await logAuditEvent(request, AuditEventType.REGISTER_FAILURE, {
@@ -114,6 +219,7 @@ export async function POST(request: NextRequest) {
         status: "failure",
         details: {
           reason: "Password validation failed",
+          passwordScore: passwordValidation.score,
           errors: passwordValidation.errors,
         },
       });
@@ -121,16 +227,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          message: "Password does not meet requirements",
-          errors: passwordValidation.errors,
+          message: "Password does not meet security requirements",
+          errors: passwordValidation.errors.map(error => ({ field: "password", message: error })),
+          passwordStrength: {
+            score: passwordValidation.score,
+            requirements: passwordValidation.errors
+          }
         },
         { status: 400 }
       );
     }
 
-    // Check if user already exists
+    // Check for existing user
     const existingUsers = await db.findMany("users", { where: { email } });
-
     if (existingUsers.length > 0) {
       await logAuditEvent(request, AuditEventType.REGISTER_FAILURE, {
         email,
@@ -139,26 +248,37 @@ export async function POST(request: NextRequest) {
       });
 
       return NextResponse.json(
-        { success: false, message: "User already exists" },
+        { 
+          success: false, 
+          message: "An account with this email already exists",
+          errors: [{ field: "email", message: "This email is already registered" }]
+        },
         { status: 409 }
       );
     }
 
-    // Hash password
+    // Hash password with enhanced security
     const hashedPassword = await EnhancedAuthService.hashPassword(password);
 
-    // Create organization for the user
+    // Create organization
     const organizationData = {
-      name: organizationName || `${firstName}'s Organization`,
-      settings: {},
-      subscription: {},
+      name: organizationName || `${firstName} ${lastName}'s Organization`,
+      settings: {
+        timezone: "UTC",
+        dateFormat: "YYYY-MM-DD",
+        currency: "USD",
+      },
+      subscription: {
+        plan: "trial",
+        status: "active",
+        trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days trial
+      },
       createdAt: new Date(),
       updatedAt: new Date(),
     };
 
     const organization = await db.create("organizations", organizationData);
 
-    // Ensure we have a valid organization ID
     if (!organization || !organization.id) {
       await logAuditEvent(request, AuditEventType.REGISTER_FAILURE, {
         email,
@@ -172,10 +292,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Convert role to uppercase to match Prisma enum values
-    const prismaRole = role.toUpperCase() as "ADMIN" | "MANAGER" | "AGENT";
-
-    // Create user
+    // Create user with enhanced data
+    const prismaRole = roleValidation.adjustedRole.toUpperCase() as "ADMIN" | "MANAGER" | "AGENT";
     const userData = {
       email,
       password: hashedPassword,
@@ -186,6 +304,12 @@ export async function POST(request: NextRequest) {
       isActive: true,
       isOnboardingCompleted: false,
       onboardingStep: 0,
+      emailVerified: false, // Require email verification
+      twoFactorEnabled: false,
+      securityQuestions: [],
+      loginAttempts: 0,
+      lastLogin: null,
+      passwordChangedAt: new Date(),
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -198,6 +322,7 @@ export async function POST(request: NextRequest) {
     // Remove password from response
     const { password: _, ...userWithoutPassword } = user;
 
+    // Log successful registration
     await logAuditEvent(request, AuditEventType.REGISTER_SUCCESS, {
       userId: user.id,
       email,
@@ -205,6 +330,8 @@ export async function POST(request: NextRequest) {
       details: {
         organizationId: organization.id,
         role: prismaRole,
+        passwordScore: passwordValidation.score,
+        emailDomain: email.split("@")[1],
       },
     });
 
@@ -213,16 +340,21 @@ export async function POST(request: NextRequest) {
         success: true,
         data: {
           user: userWithoutPassword,
-          token: tokens.accessToken, // For backward compatibility
-          accessToken: tokens.accessToken, // New standard name
+          token: tokens.accessToken,
+          accessToken: tokens.accessToken,
           refreshToken: tokens.refreshToken,
           expiresIn: tokens.expiresIn,
+          organization: {
+            id: organization.id,
+            name: organization.name,
+          },
         },
+        message: "Account created successfully",
       },
       { status: 201 }
     );
 
-    // Set cookies using shared configuration
+    // Set secure cookies
     const { access, refresh } = AUTH_CONFIG.tokens;
 
     response.cookies.set(access.cookieName, tokens.accessToken, {
@@ -235,12 +367,15 @@ export async function POST(request: NextRequest) {
       maxAge: refresh.maxAge,
     });
 
+    // Add rate limit headers
+    authRateLimiter.addHeaders(response, request);
+
     return response;
   } catch (error) {
     console.error("[Auth] Registration error:", error);
 
     const errorMessage =
-      error instanceof Error ? error.message : typeof error === "string" ? error : JSON.stringify(error);
+      error instanceof Error ? error.message : typeof error === "string" ? error : "Internal server error";
 
     await logAuditEvent(request, AuditEventType.REGISTER_FAILURE, {
       status: "failure",

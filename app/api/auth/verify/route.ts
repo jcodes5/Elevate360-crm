@@ -1,72 +1,71 @@
-import { type NextRequest, NextResponse } from "next/server"
-import { EnhancedAuthService } from "@/lib/auth-enhanced"
-import { db } from "@/lib/database-config"
-import type { User } from "@/types"
+import { type NextRequest, NextResponse } from "next/server";
+import { ProductionAuthService, sessionManager } from "@/lib/auth-production";
+import { db } from "@/lib/database-config";
 
-export async function GET(request: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    console.log("User verification route called")
+    // Get tokens from cookies or headers
+    const { accessToken, sessionId } = ProductionAuthService.getTokensFromCookies(request);
 
-    // Get token from request
-    const token = EnhancedAuthService.getTokenFromRequest(request)
-
-    if (!token) {
+    if (!accessToken) {
       return NextResponse.json(
-        { success: false, message: "No token provided" },
+        { success: false, message: "No access token provided" },
         { status: 401 }
-      )
+      );
     }
 
     // Verify token
-    const payload = EnhancedAuthService.verifyAccessToken(token)
+    const payload = ProductionAuthService.verifyAccessToken(accessToken);
 
-    // Get fresh user data from database
-    const user = await db.findById<User>("users", payload.userId)
-
-    if (!user) {
+    // Get user from database to ensure they still exist and are active
+    const user = await db.findById("users", payload.userId);
+    
+    if (!user || !user.isActive) {
       return NextResponse.json(
-        { success: false, message: "User not found" },
-        { status: 404 }
-      )
+        { success: false, message: "User not found or inactive" },
+        { status: 401 }
+      );
     }
 
-    if (!user.isActive) {
+    // Get session information
+    const userSessions = ProductionAuthService.getUserSessions(payload.userId);
+    const currentSession = userSessions.find(s => s.sessionId === payload.sessionId);
+
+    if (!currentSession) {
       return NextResponse.json(
-        { success: false, message: "User account is deactivated" },
+        { success: false, message: "Session not found" },
         { status: 401 }
-      )
+      );
     }
 
     // Remove password from response
-    const { password: _, ...userWithoutPassword } = user
+    const { password: _, ...userWithoutPassword } = user;
 
     return NextResponse.json({
       success: true,
       data: {
         user: userWithoutPassword,
-        tokenPayload: {
-          userId: payload.userId,
-          email: payload.email,
-          role: payload.role,
-          organizationId: payload.organizationId
-        }
+        sessionId: payload.sessionId,
+        activeSessions: userSessions.length,
+        lastActivity: new Date(currentSession.lastActivity),
+        isValid: true,
       },
-      message: "User verified successfully"
-    })
+      message: "Session is valid",
+    });
 
   } catch (error) {
-    console.error("User verification error:", error)
-
-    if (error instanceof Error && error.message === "Access token expired") {
-      return NextResponse.json(
-        { success: false, message: "Token expired", code: "TOKEN_EXPIRED" },
-        { status: 401 }
-      )
-    }
-
+    console.error("Session verification error:", error);
+    
+    const errorMessage = error instanceof Error ? error.message : "Invalid token";
+    
     return NextResponse.json(
-      { success: false, message: "Invalid token" },
+      { success: false, message: errorMessage },
       { status: 401 }
-    )
+    );
   }
+}
+
+export async function GET(request: NextRequest) {
+  // Handle GET requests (same logic)
+  return POST(request);
 }

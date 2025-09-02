@@ -72,6 +72,7 @@ const Icons = {
 };
 import { toast } from "@/hooks/use-toast";
 import type { User } from "@/types";
+import { apiClient } from "@/lib/api-client";
 
 const formSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -87,7 +88,7 @@ const formSchema = z.object({
     ),
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
-  organizationName: z.string().optional(),
+  organizationName: z.string(),
   role: z.enum(["admin", "manager", "agent"]),
   acceptTerms: z.boolean().refine((val) => val === true, {
     message: "You must accept the terms and conditions",
@@ -162,7 +163,19 @@ export function RegisterForm() {
       }
 
       // Update auth context
-      login(result.data);
+      login(result.data.user, {
+        accessToken: result.data.token,
+        sessionId: result.data.sessionId
+      }, {
+        sessionId: result.data.sessionId
+      });
+      
+      // Set token in cookies for persistence
+      document.cookie = `accessToken=${result.data.token}; path=/; max-age=${15 * 60}; SameSite=Lax`;
+      
+      // Set token in API client for subsequent requests
+      apiClient.setToken(result.data.token);
+      console.log("Token set in API client:", result.data.token);
 
       // Show success message
       toast({

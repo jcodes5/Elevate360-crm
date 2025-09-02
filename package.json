@@ -14,7 +14,9 @@
     "db:generate": "npx prisma generate",
     "db:migrate": "npx prisma migrate dev",
     "workflow:migrate": "npx prisma migrate dev --name workflow_executions",
-    "workflow:test": "npx ts-node scripts/test-workflow-execution.ts"
+    "workflow:test": "npx ts-node scripts/test-workflow-execution.ts",
+    "auth:setup": "node scripts/setup-production-auth.js",
+    "auth:check": "node scripts/setup-production-auth.js"
   },
   "dependencies": {
     "@emotion/is-prop-valid": "latest",
@@ -64,6 +66,8 @@
     "lucide-react": "latest",
     "next": "14.2.16",
     "next-themes": "latest",
+    "otplib": "^12.0.1",
+    "qrcode": "^1.5.3",
     "react": "18.3.1",
     "react-day-picker": "latest",
     "react-dnd": "latest",
@@ -80,7 +84,9 @@
     "zod": "latest"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "22.10.10",
+    "@types/qrcode": "^1.5.5",
     "@types/react": "18.3.18",
     "@types/react-dom": "18.3.5",
     "eslint": "9.19.0",

@@ -36,6 +36,23 @@ model Organization {
   @@map("organizations")
 }
 
+// Audit Log model
+model AuditLog {
+  id           String    @id @default(cuid())
+  eventType    String
+  userId       String?
+  email        String?
+  ipAddress    String
+  userAgent    String
+  requestPath  String
+  timestamp    DateTime  @default(now())
+  details      Json?
+  status       String
+  correlationId String
+
+  @@map("audit_logs")
+}
+
 // User model
 model User {
   id                    String   @id @default(cuid())
@@ -50,6 +67,11 @@ model User {
   lastLogin             DateTime?
   isOnboardingCompleted Boolean  @default(false)
   onboardingStep        Int      @default(0)
+  emailVerified         Boolean  @default(false)
+  twoFactorEnabled      Boolean  @default(false)
+  securityQuestions     Json     @default("[]")
+  loginAttempts         Int      @default(0)
+  passwordChangedAt     DateTime @default(now())
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
