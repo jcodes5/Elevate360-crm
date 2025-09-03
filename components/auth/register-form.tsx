@@ -130,6 +130,7 @@ export function RegisterForm() {
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           email: data.email,
           password: data.password,
@@ -162,20 +163,18 @@ export function RegisterForm() {
         return;
       }
 
-      // Update auth context
+      // Update auth context - no need to manually set cookies as they are httpOnly
       login(result.data.user, {
-        accessToken: result.data.token,
+        accessToken: result.data.accessToken,
+        refreshToken: result.data.refreshToken,
         sessionId: result.data.sessionId
       }, {
         sessionId: result.data.sessionId
       });
       
-      // Set token in cookies for persistence
-      document.cookie = `accessToken=${result.data.token}; path=/; max-age=${15 * 60}; SameSite=Lax`;
-      
       // Set token in API client for subsequent requests
-      apiClient.setToken(result.data.token);
-      console.log("Token set in API client:", result.data.token);
+      apiClient.setToken(result.data.accessToken);
+      console.log("Token set in API client:", result.data.accessToken);
 
       // Show success message
       toast({

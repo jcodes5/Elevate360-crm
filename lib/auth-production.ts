@@ -5,8 +5,8 @@ import type { User } from "@/types";
 import { NextRequest } from "next/server";
 
 // Production JWT Configuration
-const JWT_ACCESS_SECRET = process.env.JWT_SECRET || "your-access-secret-key";
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "your-refresh-secret-key";
+const JWT_ACCESS_SECRET = process.env.JWT_SECRET || "elevate360-production-access-secret-key-2024";
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "elevate360-production-refresh-secret-key-2024";
 const JWT_ACCESS_EXPIRES_IN = "15m";
 const JWT_REFRESH_EXPIRES_IN = "7d";
 
@@ -224,7 +224,7 @@ export class ProductionAuthService {
         audience: "elevate360-users",
       }) as TokenPayload;
 
-      // Update session activity
+      // Update session activity if session exists
       if (payload.sessionId) {
         sessionManager.updateActivity(payload.sessionId);
       }

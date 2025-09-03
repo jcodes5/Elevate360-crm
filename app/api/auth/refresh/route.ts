@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { EnhancedAuthService } from "@/lib/auth-enhanced";
+import { ProductionAuthService } from "@/lib/auth-production";
 
 export async function POST(request: NextRequest) {
   try {
@@ -46,13 +46,14 @@ export async function POST(request: NextRequest) {
     console.log("✅ Refresh token found, attempting refresh...");
 
     // Refresh the access token
-    const result = await EnhancedAuthService.refreshAccessToken(refreshToken);
+    const result = await ProductionAuthService.refreshAccessToken(refreshToken);
     console.log("✅ Token refresh successful");
 
     const responseData = {
       success: true,
       data: {
         accessToken: result.accessToken,
+        sessionId: result.sessionId,
         expiresIn: result.expiresIn,
         tokenType: "Bearer",
       },

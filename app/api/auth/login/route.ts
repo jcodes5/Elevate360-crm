@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { EnhancedAuthService } from "@/lib/auth-enhanced";
+import { ProductionAuthService } from "@/lib/auth-production";
 import { db } from "@/lib/database-config";
 import { validateAndSanitizeInput } from "@/lib/input-validation";
 import { logAuditEvent, AuditEventType } from "@/lib/audit-logger";
@@ -251,7 +251,7 @@ export async function POST(request: NextRequest) {
 
     // Verify password with timing attack protection
     console.log("🔒 Verifying password...");
-    const isValidPassword = await EnhancedAuthService.comparePassword(
+    const isValidPassword = await ProductionAuthService.comparePassword(
       password,
       user.password!
     );
@@ -292,7 +292,11 @@ export async function POST(request: NextRequest) {
 
     // Generate tokens with enhanced security
     console.log("🎫 Generating tokens...");
-    const tokens = EnhancedAuthService.generateTokens(user);
+    const sessionInfo = {
+      ipAddress: request.headers.get("x-forwarded-for") || request.ip || "unknown",
+      userAgent: request.headers.get("user-agent") || "unknown",
+    };
+    const tokens = ProductionAuthService.generateTokens(user, sessionInfo);
 
     // Remove sensitive data from response
     const { password: _, ...userWithoutPassword } = user;
@@ -316,6 +320,7 @@ export async function POST(request: NextRequest) {
         token: tokens.accessToken, // For backward compatibility
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
+        sessionId: tokens.sessionId,
         expiresIn: tokens.expiresIn,
       },
       message: "Login successful",

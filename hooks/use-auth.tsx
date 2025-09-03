@@ -49,19 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log("🔄 Initializing session...")
       
-      // Try to get token from cookies first
-      const cookies = document.cookie.split(';')
-      const tokenCookie = cookies.find(c => c.trim().startsWith('accessToken='))
-      
-      if (!tokenCookie) {
-        console.log("❌ No access token found in cookies")
-        setSession(prev => ({ ...prev, isLoading: false }))
-        return
-      }
-
-      console.log("✅ Found access token in cookies")
-      
-      // Verify session with server
+      // Try to verify session with server
       const response = await fetch("/api/auth/verify", {
         method: "POST",
         credentials: "include",
@@ -87,10 +75,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } else {
         console.log("❌ Session verification request failed:", response.status)
+        // Even if verification fails, we're done loading
         setSession(prev => ({ ...prev, isLoading: false }))
       }
     } catch (error) {
       console.error("❌ Session initialization failed:", error)
+      // Even if initialization fails, we're done loading
       setSession(prev => ({ ...prev, isLoading: false }))
     }
   }

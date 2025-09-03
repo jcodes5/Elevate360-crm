@@ -13,6 +13,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuth } from "@/hooks/use-auth";
+import { apiClient } from "@/lib/api-client";
 
 const Icons = {
   spinner: (props: any) => (
@@ -95,6 +96,7 @@ export function LoginForm() {
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(data),
       });
 
@@ -104,17 +106,19 @@ export function LoginForm() {
         throw new Error(result.message || "Login failed");
       }
 
-      // Update auth context
+      // Update auth context - no need to manually set cookies as they are httpOnly
       login(result.data.user, {
-        accessToken: result.data.token,
+        accessToken: result.data.accessToken,
+        refreshToken: result.data.refreshToken,
         sessionId: result.data.sessionId
       }, {
         sessionId: result.data.sessionId
       });
 
-      // Set cookies for authentication persistence
-      document.cookie = `accessToken=${result.data.token}; path=/; max-age=${15 * 60}; SameSite=Lax`;
-      
+      // Set token in API client for subsequent requests
+      apiClient.setToken(result.data.accessToken);
+      console.log("Token set in API client:", result.data.accessToken);
+
       // Show success message
       // toast({
       //   title: "Welcome back!",

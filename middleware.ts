@@ -1,16 +1,15 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { EnhancedAuthService } from "@/lib/auth-enhanced";
+import { ProductionAuthService } from "@/lib/auth-production";
 import { db } from "@/lib/database-config";
 
 // Public paths that don't require authentication
 const publicPaths = [
-  "/",
   "/landing",
   "/auth/login",
   "/auth/register",
   "/api/auth/login",
-  "/api/auth/register", 
+  "/api/auth/register",
   "/api/auth/refresh",
   "/api/auth/logout",
   "/api/test", // Keep as public for now but fix the API
@@ -66,7 +65,7 @@ export async function middleware(request: NextRequest) {
   console.log(`🔗 Is API route: ${isApiRoute}`);
 
   // Get tokens from cookies
-  const { accessToken, refreshToken } = EnhancedAuthService.getTokensFromCookies(request);
+  const { accessToken, refreshToken } = ProductionAuthService.getTokensFromCookies(request);
   console.log(`🍪 Tokens found - Access: ${!!accessToken}, Refresh: ${!!refreshToken}`);
 
   // No access token -> API: 401, page: redirect to login
@@ -93,8 +92,9 @@ export async function middleware(request: NextRequest) {
   try {
     // Verify token
     console.log(`🔐 Verifying token for: ${pathname}`);
-    const payload = EnhancedAuthService.verifyAccessToken(accessToken);
-    console.log(`✅ Token verified for user: ${payload.userId}`);
+    console.log(`🔑 Access token length: ${accessToken?.length || 0}`);
+    const payload = ProductionAuthService.verifyAccessToken(accessToken);
+    console.log(`✅ Token verified for user: ${payload.userId}, session: ${payload.sessionId}`);
 
     // For API routes we allow continuing (business logic may still check headers)
     if (isApiRoute) {
@@ -138,23 +138,27 @@ export async function middleware(request: NextRequest) {
     // Token verification failed; try refresh if we have a refresh token
     if (refreshToken) {
       console.log(`🔄 Attempting token refresh...`);
+      console.log(`🔑 Refresh token length: ${refreshToken?.length || 0}`);
       try {
-        const newTokenData = await EnhancedAuthService.refreshAccessToken(refreshToken);
-        console.log(`✅ Token refresh successful`);
-        
+        const newTokenData = await ProductionAuthService.refreshAccessToken(refreshToken);
+        console.log(`✅ Token refresh successful, new session: ${newTokenData.sessionId}`);
+
         const response = NextResponse.next();
         response.cookies.set("accessToken", newTokenData.accessToken, {
           httpOnly: true,
           secure: process.env.NODE_ENV === "production",
-          sameSite: "lax", 
+          sameSite: "lax",
           maxAge: 15 * 60,
           path: "/",
         });
         return response;
       } catch (refreshErr) {
-        console.log(`❌ Token refresh failed:`, refreshErr);
+        console.log(`❌ Token refresh failed:`, refreshErr.message);
+        console.log(`❌ Refresh error details:`, refreshErr);
         // refresh failed, fall through to redirect/401 below
       }
+    } else {
+      console.log(`❌ No refresh token available for refresh`);
     }
 
     if (isApiRoute) {
