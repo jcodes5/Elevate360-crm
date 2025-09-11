@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AUTH_CONFIG } from "./auth-config";
+import { getClientIp } from "@/lib/request-utils";
 
 // Simple in-memory store for rate limiting
 const ipAttempts = new Map<string, { count: number; resetTime: number }>();
@@ -15,7 +16,7 @@ setInterval(() => {
 }, 60000); // Clean up every minute
 
 export async function rateLimiter(request: NextRequest) {
-  const ip = request.ip || request.headers.get("x-forwarded-for") || "unknown";
+  const ip = getClientIp(request);
   const now = Date.now();
   const windowMs = AUTH_CONFIG.security.rateLimit.windowMs;
   const maxAttempts = AUTH_CONFIG.security.rateLimit.maxAttempts;

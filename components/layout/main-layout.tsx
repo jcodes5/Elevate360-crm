@@ -2,7 +2,6 @@
 
 import type React from "react"
 
-
 interface MainLayoutProps {
   children: React.ReactNode
   breadcrumbs?: { label: string; href?: string }[]

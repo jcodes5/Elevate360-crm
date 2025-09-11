@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const payload = ProductionAuthService.verifyAccessToken(accessToken);
+    const payload = await ProductionAuthService.verifyAccessToken(accessToken);
     const userId = payload.userId;
 
     // Get user from database
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Log 2FA setup initiation
-    await logAuditEvent(request, AuditEventType.SECURITY_EVENT, {
+    await logAuditEvent(request, AuditEventType.ACCOUNT_UNLOCK, {
       userId,
       email: user.email,
       status: "success",

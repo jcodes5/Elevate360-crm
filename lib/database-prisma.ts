@@ -57,9 +57,19 @@ export class PrismaDatabase {
         where: { id },
         data: updates as any,
       }) as T
-    } catch (error) {
+    } catch (error: any) {
+      // Check if it's a connection timeout error
+      if (error.code === 'P2024') {
+        console.error(`Connection timeout while updating ${table} with id ${id}:`, error.message)
+        throw new Error(`Database connection timeout: ${error.message}`)
+      }
+      // For other Prisma errors that indicate the record doesn't exist
+      if (error.code === 'P2025' || error.code === 'P2016') {
+        console.error(`Record not found when updating ${table} with id ${id}:`, error.message)
+        return null
+      }
       console.error(`Error updating ${table} with id ${id}:`, error)
-      return null
+      throw error // Re-throw other errors
     }
   }
 

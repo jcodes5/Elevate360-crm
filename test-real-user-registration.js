@@ -14,8 +14,8 @@ const testRealUserRegistration = async () => {
   
   try {
     // Test the enhanced registration endpoint (recommended)
-    console.log("Testing enhanced registration endpoint...");
-    const response = await fetch("http://localhost:3000/api/auth/register-enhanced", {
+    console.log("Testing registration endpoint...");
+    const response = await fetch("http://localhost:3000/api/auth/register", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -24,10 +24,10 @@ const testRealUserRegistration = async () => {
     });
     
     const result = await response.json();
-    console.log("Enhanced registration response:", result);
-    
+    console.log("Registration response:", result);
+
     if (result.success) {
-      console.log("✅ Enhanced registration is working correctly!");
+      console.log("✅ Registration is working correctly!");
       console.log("User created with ID:", result.data.user.id);
       console.log("Organization created with ID:", result.data.user.organizationId);
     } else {
@@ -35,7 +35,7 @@ const testRealUserRegistration = async () => {
     }
     
     // Test the basic registration endpoint
-    console.log("\nTesting basic registration endpoint...");
+    console.log("\nTesting second registration with different email...");
     const basicResponse = await fetch("http://localhost:3000/api/auth/register", {
       method: "POST",
       headers: {

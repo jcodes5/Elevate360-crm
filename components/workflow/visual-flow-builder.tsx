@@ -374,8 +374,8 @@ function CustomNode({ data }: { data: any }) {
     <div className="bg-white border-2 border-gray-200 rounded-lg p-3 min-w-[180px] shadow-sm hover:shadow-md transition-shadow">
       <div className="flex items-center gap-2">
         <div
-          className="p-2 rounded-full text-white flex items-center justify-center"
-          style={{ backgroundColor: data.color }}
+          className="p-2 rounded-full text-white flex items-center justify-center dynamic-bg"
+          style={{ '--dynamic-bg-color': data.color } as React.CSSProperties}
         >
           <Icon className="w-4 h-4" />
         </div>
@@ -1020,8 +1020,19 @@ function DropZone({
     }),
   }), [reactFlowInstance, reactFlowWrapper, setNodes]);
 
+  // Create a ref for the drop zone element
+  const dropRef = useRef<HTMLDivElement>(null);
+  
+  // Combine the drop ref with the element ref properly
+  const ref = useCallback((element: HTMLDivElement | null) => {
+    drop(element);
+    if (element) {
+      dropRef.current = element;
+    }
+  }, [drop]);
+
   return (
-    <div className="flex-1" ref={drop}>
+    <div className="flex-1" ref={ref}>
       <div className="h-full" ref={reactFlowWrapper}>
         <ReactFlow
           nodes={nodes}

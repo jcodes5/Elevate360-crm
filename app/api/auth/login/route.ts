@@ -6,6 +6,7 @@ import { logAuditEvent, AuditEventType } from "@/lib/audit-logger";
 import { authRateLimiter } from "@/lib/enhanced-rate-limiter";
 import { AUTH_CONFIG } from "@/lib/auth-config";
 import { validateCsrfToken } from "../csrf-token/route";
+import { getClientInfo } from "@/lib/request-utils";
 import type { User } from "@/types";
 
 // Account lockout management
@@ -292,11 +293,8 @@ export async function POST(request: NextRequest) {
 
     // Generate tokens with enhanced security
     console.log("🎫 Generating tokens...");
-    const sessionInfo = {
-      ipAddress: request.headers.get("x-forwarded-for") || request.ip || "unknown",
-      userAgent: request.headers.get("user-agent") || "unknown",
-    };
-    const tokens = ProductionAuthService.generateTokens(user, sessionInfo);
+    const sessionInfo = getClientInfo(request);
+    const tokens = await ProductionAuthService.generateTokens(user, sessionInfo);
 
     // Remove sensitive data from response
     const { password: _, ...userWithoutPassword } = user;
@@ -343,7 +341,7 @@ export async function POST(request: NextRequest) {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: rememberMe ? AUTH_CONFIG.tokens.refresh.maxAge : AUTH_CONFIG.tokens.access.maxAge * 4, // 1 hour if not remember me, 7 days if remember me
+      maxAge: AUTH_CONFIG.tokens.refresh.maxAge, // Always use 7 days for refresh token
       path: "/",
     });
 

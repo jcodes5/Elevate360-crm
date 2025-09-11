@@ -1,5 +1,7 @@
 "use client"
 
+"use client"
+
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
@@ -38,7 +40,7 @@ export function EnhancedLoginForm() {
     },
   })
 
-  const onSubmit = (data: FormData) => {
+  const onSubmit = (data: z.infer<typeof formSchema>) => {
     console.log("🔐 Login form submitted with data:", { ...data, password: "[REDACTED]" })
     
     startTransition(async () => {
@@ -270,7 +272,7 @@ export function EnhancedLoginForm() {
       </div>
 
       {/* Debug Info (Development Only) */}
-      {process.env.NODE_ENV === "development" && (
+      {/* {process.env.NODE_ENV === "development" && (
         <div className="mt-8 p-4 bg-gray-50 rounded-lg">
           <h4 className="text-sm font-medium text-gray-700 mb-2">Debug Info</h4>
           <div className="text-xs text-gray-600 space-y-1">
@@ -280,7 +282,7 @@ export function EnhancedLoginForm() {
             <p>Current URL: {typeof window !== 'undefined' ? window.location.href : 'SSR'}</p>
           </div>
         </div>
-      )}
+      )} */}
     </div>
   )
 }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getClientIp } from "@/lib/request-utils";
 
 interface RateLimitInfo {
   count: number;
@@ -44,18 +45,7 @@ export class EnhancedRateLimiter {
   }
 
   private getClientIP(request: NextRequest): string {
-    // Try to get real IP from headers
-    const forwarded = request.headers.get("x-forwarded-for");
-    const realIP = request.headers.get("x-real-ip");
-    const cloudflareIP = request.headers.get("cf-connecting-ip");
-    
-    return (
-      cloudflareIP ||
-      realIP ||
-      (forwarded ? forwarded.split(",")[0].trim() : null) ||
-      request.ip ||
-      "unknown"
-    );
+    return getClientIp(request);
   }
 
   private getKey(request: NextRequest, keyGenerator?: (req: NextRequest) => string): string {

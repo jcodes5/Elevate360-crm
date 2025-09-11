@@ -1,17 +1,17 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { EnhancedAuthService, canAccessResource } from "@/lib/auth-enhanced"
+import { ProductionAuthService } from "@/lib/auth-production"
 import { prisma } from "@/lib/db"
 import type { User } from "@/types"
 
 // Helper function to verify admin access
 async function verifyAdminAccess(request: NextRequest) {
-  const token = EnhancedAuthService.getTokenFromRequest(request)
+  const token = ProductionAuthService.getTokenFromRequest(request)
   
   if (!token) {
     throw new Error("No token provided")
   }
 
-  const payload = EnhancedAuthService.verifyAccessToken(token)
+  const payload = await ProductionAuthService.verifyAccessToken(token)
 
   // Check if user has admin role
   if (payload.role !== 'admin') {
@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate password strength
-    const passwordValidation = EnhancedAuthService.validatePasswordStrength(password)
+    const passwordValidation = ProductionAuthService.validatePasswordStrength(password)
     if (!passwordValidation.isValid) {
       return NextResponse.json(
         {
@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Hash password
-    const hashedPassword = await EnhancedAuthService.hashPassword(password)
+    const hashedPassword = await ProductionAuthService.hashPassword(password)
 
     // Create user
     const userData = {

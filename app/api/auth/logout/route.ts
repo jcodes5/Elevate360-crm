@@ -1,21 +1,30 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { EnhancedAuthService } from "@/lib/auth-enhanced"
+import { ProductionAuthService } from "@/lib/auth-production"
 
 export async function POST(request: NextRequest) {
   try {
     console.log("Logout route called")
 
     // Get token for logging purposes
-    const token = EnhancedAuthService.getTokenFromRequest(request)
+    const token = ProductionAuthService.getTokenFromRequest(request)
     
     if (token) {
       try {
-        const payload = EnhancedAuthService.verifyAccessToken(token)
+        const payload = await ProductionAuthService.verifyAccessToken(token)
         console.log("User logout:", payload.userId)
       } catch (error) {
         // Token might be expired, but we still want to clear cookies
         console.log("Logout with invalid/expired token")
       }
+    }
+
+    const refreshToken = request.cookies.get('refreshToken')?.value
+
+    // Blacklist tokens and remove session
+    if (token) {
+      try {
+        ProductionAuthService.logout(token, refreshToken)
+      } catch {}
     }
 
     // Create response

@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { db } from "./database-config";
+import { getClientIp, getUserAgent } from "@/lib/request-utils";
 
 export enum AuditEventType {
   LOGIN_SUCCESS = "LOGIN_SUCCESS",
@@ -46,9 +47,8 @@ export async function logAuditEvent(
     eventType,
     userId: details.userId,
     email: details.email,
-    ipAddress:
-      request.ip || request.headers.get("x-forwarded-for") || "unknown",
-    userAgent: request.headers.get("user-agent") || "unknown",
+    ipAddress: getClientIp(request),
+    userAgent: getUserAgent(request),
     requestPath: request.nextUrl.pathname,
     timestamp: new Date(),
     status: details.status,

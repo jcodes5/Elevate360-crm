@@ -42,8 +42,6 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
           const publicPaths = [
             "/auth/login",
             "/auth/register",
-            "/auth/register-enhanced",
-            "/auth/login-enhanced",
           ];
           const isPublic = publicPaths.some((p) => pathname?.startsWith(p));
           if (!isPublic) {

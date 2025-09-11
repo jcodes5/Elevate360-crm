@@ -1,12 +1,17 @@
 import jwt from "jsonwebtoken";
+import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
 import type { User } from "@/types";
 import { NextRequest } from "next/server";
+import { getClientIp } from "@/lib/request-utils";
 
 // Production JWT Configuration
-const JWT_ACCESS_SECRET = process.env.JWT_SECRET || "elevate360-production-access-secret-key-2024";
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "elevate360-production-refresh-secret-key-2024";
+const JWT_ACCESS_SECRET =
+  process.env.JWT_SECRET || "elevate360-production-access-secret-key-2024";
+const JWT_REFRESH_SECRET =
+  process.env.JWT_REFRESH_SECRET ||
+  "elevate360-production-refresh-secret-key-2024";
 const JWT_ACCESS_EXPIRES_IN = "15m";
 const JWT_REFRESH_EXPIRES_IN = "7d";
 
@@ -47,18 +52,21 @@ export const tokenBlacklist = new TokenBlacklist();
 
 // Session storage for real-time management
 class SessionManager {
-  private activeSessions = new Map<string, {
-    userId: string;
-    deviceId: string;
-    lastActivity: number;
-    ipAddress: string;
-    userAgent: string;
-  }>();
+  private activeSessions = new Map<
+    string,
+    {
+      userId: string;
+      deviceId: string;
+      lastActivity: number;
+      ipAddress: string;
+      userAgent: string;
+    }
+  >();
 
   addSession(sessionId: string, session: any) {
     this.activeSessions.set(sessionId, {
       ...session,
-      lastActivity: Date.now()
+      lastActivity: Date.now(),
     });
   }
 
@@ -94,7 +102,7 @@ class SessionManager {
   cleanup() {
     const now = Date.now();
     const maxAge = 24 * 60 * 60 * 1000; // 24 hours
-    
+
     for (const [sessionId, session] of this.activeSessions.entries()) {
       if (now - session.lastActivity > maxAge) {
         this.activeSessions.delete(sessionId);
@@ -147,7 +155,10 @@ export class ProductionAuthService {
     return bcrypt.hash(password, saltRounds);
   }
 
-  static async comparePassword(password: string, hashedPassword: string): Promise<boolean> {
+  static async comparePassword(
+    password: string,
+    hashedPassword: string
+  ): Promise<boolean> {
     return bcrypt.compare(password, hashedPassword);
   }
 
@@ -159,18 +170,29 @@ export class ProductionAuthService {
   // Generate device ID
   static generateDeviceId(userAgent: string, ipAddress: string): string {
     const input = `${userAgent}_${ipAddress}_${Date.now()}`;
-    return Buffer.from(input).toString('base64').substr(0, 16);
+    return Buffer.from(input).toString("base64").substr(0, 16);
+  }
+
+  // Helper function to create a JWT secret key
+  private static createSecretKey(secret: string): Uint8Array {
+    return new TextEncoder().encode(secret);
   }
 
   // Generate tokens with session tracking
-  static generateTokens(user: User, sessionInfo: {
-    ipAddress: string;
-    userAgent: string;
-  }): AuthTokens {
+  static async generateTokens(
+    user: User,
+    sessionInfo: {
+      ipAddress: string;
+      userAgent: string;
+    }
+  ): Promise<AuthTokens> {
     const sessionId = this.generateSessionId();
-    const deviceId = this.generateDeviceId(sessionInfo.userAgent, sessionInfo.ipAddress);
+    const deviceId = this.generateDeviceId(
+      sessionInfo.userAgent,
+      sessionInfo.ipAddress
+    );
 
-    const payload: Omit<TokenPayload, 'iat' | 'exp'> = {
+    const payload: Omit<TokenPayload, "iat" | "exp"> = {
       userId: user.id,
       email: user.email,
       role: user.role,
@@ -180,19 +202,25 @@ export class ProductionAuthService {
       isOnboardingCompleted: user.isOnboardingCompleted ?? false,
     };
 
-    const accessToken = jwt.sign(payload, JWT_ACCESS_SECRET, {
-      expiresIn: JWT_ACCESS_EXPIRES_IN,
-      issuer: "elevate360-crm",
-      audience: "elevate360-users",
-      jwtid: sessionId,
-    });
+    // Create access token
+    const accessToken = await new SignJWT(payload as any)
+      .setProtectedHeader({ alg: 'HS256' })
+      .setIssuedAt()
+      .setIssuer('elevate360-crm')
+      .setAudience('elevate360-users')
+      .setExpirationTime(JWT_ACCESS_EXPIRES_IN)
+      .setJti(sessionId)
+      .sign(this.createSecretKey(JWT_ACCESS_SECRET));
 
-    const refreshToken = jwt.sign(payload, JWT_REFRESH_SECRET, {
-      expiresIn: JWT_REFRESH_EXPIRES_IN,
-      issuer: "elevate360-crm",
-      audience: "elevate360-users",
-      jwtid: sessionId,
-    });
+    // Create refresh token
+    const refreshToken = await new SignJWT(payload as any)
+      .setProtectedHeader({ alg: 'HS256' })
+      .setIssuedAt()
+      .setIssuer('elevate360-crm')
+      .setAudience('elevate360-users')
+      .setExpirationTime(JWT_REFRESH_EXPIRES_IN)
+      .setJti(sessionId)
+      .sign(this.createSecretKey(JWT_REFRESH_SECRET));
 
     // Register session
     sessionManager.addSession(sessionId, {
@@ -212,51 +240,90 @@ export class ProductionAuthService {
   }
 
   // Verify access token with blacklist check
-  static verifyAccessToken(token: string): TokenPayload {
+  static async verifyAccessToken(token: string): Promise<TokenPayload> {
     // Check if token is blacklisted
     if (tokenBlacklist.has(token)) {
+      console.log("❌ Access token is blacklisted");
       throw new Error("Token has been revoked");
     }
 
     try {
-      const payload = jwt.verify(token, JWT_ACCESS_SECRET, {
+      console.log("🔑 Verifying access token with JWT_ACCESS_SECRET");
+      console.log("🔑 Access token length:", token.length);
+      console.log("🔑 JWT_ACCESS_SECRET starts with:", JWT_ACCESS_SECRET.substring(0, 10) + "...");
+
+      const { payload } = await jwtVerify(token, this.createSecretKey(JWT_ACCESS_SECRET), {
         issuer: "elevate360-crm",
         audience: "elevate360-users",
-      }) as TokenPayload;
+      });
+
+      const typedPayload = payload as unknown as TokenPayload;
+      console.log("✅ Access token verified successfully for user:", typedPayload.userId);
 
       // Update session activity if session exists
-      if (payload.sessionId) {
-        sessionManager.updateActivity(payload.sessionId);
+      if (typedPayload.sessionId) {
+        sessionManager.updateActivity(typedPayload.sessionId);
       }
 
-      return payload;
-    } catch (error) {
-      if (error instanceof jwt.TokenExpiredError) {
+      return typedPayload;
+    } catch (error: any) {
+      console.log("❌ Access token verification failed");
+      console.log("❌ Error type:", error.constructor.name);
+      console.log("❌ Error message:", error.message);
+
+      if (error.name === 'TokenExpiredError') {
+        console.log("❌ Token expired");
         throw new Error("Access token expired");
-      } else if (error instanceof jwt.JsonWebTokenError) {
+      } else if (error.name === 'JsonWebTokenError') {
+        console.log("❌ JWT Error name:", error.name);
+        console.log("❌ JWT Error details:", error);
         throw new Error("Invalid access token");
       }
+      console.log("❌ Unexpected error:", error);
       throw new Error("Token verification failed");
     }
   }
 
   // Verify refresh token
-  static verifyRefreshToken(refreshToken: string): TokenPayload {
+  static async verifyRefreshToken(refreshToken: string): Promise<TokenPayload> {
     if (tokenBlacklist.has(refreshToken)) {
+      console.log("❌ Refresh token is blacklisted");
       throw new Error("Refresh token has been revoked");
     }
 
     try {
-      return jwt.verify(refreshToken, JWT_REFRESH_SECRET, {
+      console.log("🔑 Verifying refresh token with JWT_REFRESH_SECRET");
+      console.log("🔑 Refresh token length:", refreshToken.length);
+      console.log(
+        "🔑 JWT_REFRESH_SECRET starts with:",
+        JWT_REFRESH_SECRET.substring(0, 10) + "..."
+      );
+
+      const { payload } = await jwtVerify(refreshToken, this.createSecretKey(JWT_REFRESH_SECRET), {
         issuer: "elevate360-crm",
         audience: "elevate360-users",
-      }) as TokenPayload;
-    } catch (error) {
-      if (error instanceof jwt.TokenExpiredError) {
+      });
+
+      const typedPayload = payload as unknown as TokenPayload;
+      console.log(
+        "✅ Refresh token verified successfully for user:",
+        typedPayload.userId
+      );
+      return typedPayload;
+    } catch (error: any) {
+      console.log("❌ Refresh token verification failed");
+      console.log("❌ Error type:", error.constructor.name);
+      console.log("❌ Error message:", error.message);
+
+      if (error.name === 'TokenExpiredError') {
+        console.log("❌ Token expired");
         throw new Error("Refresh token expired");
-      } else if (error instanceof jwt.JsonWebTokenError) {
+      } else if (error.name === 'JsonWebTokenError') {
+        console.log("❌ JWT Error name:", error.name);
+        console.log("❌ JWT Error details:", error);
         throw new Error("Invalid refresh token");
       }
+      console.log("❌ Unexpected error:", error);
       throw new Error("Refresh token verification failed");
     }
   }
@@ -267,18 +334,20 @@ export class ProductionAuthService {
     expiresIn: number;
     sessionId: string;
   }> {
-    const payload = this.verifyRefreshToken(refreshToken);
+    const payload = await this.verifyRefreshToken(refreshToken);
 
     // Validate session still exists
     const sessions = sessionManager.getUserSessions(payload.userId);
-    const activeSession = sessions.find(s => s.sessionId === payload.sessionId);
+    const activeSession = sessions.find(
+      (s) => s.sessionId === payload.sessionId
+    );
 
     if (!activeSession) {
       throw new Error("Session not found or expired");
     }
 
     // Generate new access token with same session
-    const newPayload: Omit<TokenPayload, 'iat' | 'exp'> = {
+    const newPayload: Omit<TokenPayload, "iat" | "exp"> = {
       userId: payload.userId,
       email: payload.email,
       role: payload.role,
@@ -288,12 +357,14 @@ export class ProductionAuthService {
       isOnboardingCompleted: payload.isOnboardingCompleted ?? false,
     };
 
-    const accessToken = jwt.sign(newPayload, JWT_ACCESS_SECRET, {
-      expiresIn: JWT_ACCESS_EXPIRES_IN,
-      issuer: "elevate360-crm",
-      audience: "elevate360-users",
-      jwtid: payload.sessionId,
-    });
+    const accessToken = await new SignJWT(newPayload as any)
+      .setProtectedHeader({ alg: 'HS256' })
+      .setIssuedAt()
+      .setIssuer('elevate360-crm')
+      .setAudience('elevate360-users')
+      .setExpirationTime(JWT_ACCESS_EXPIRES_IN)
+      .setJti(payload.sessionId!)
+      .sign(this.createSecretKey(JWT_ACCESS_SECRET));
 
     return {
       accessToken,
@@ -306,7 +377,7 @@ export class ProductionAuthService {
   static logout(token: string, refreshToken?: string): void {
     try {
       const payload = jwt.decode(token) as TokenPayload;
-      
+
       // Add tokens to blacklist
       tokenBlacklist.add(token);
       if (refreshToken) {
@@ -325,10 +396,10 @@ export class ProductionAuthService {
   // Logout all sessions for a user
   static logoutAllSessions(userId: string): void {
     const sessions = sessionManager.getUserSessions(userId);
-    
+
     // Remove all user sessions
     sessionManager.removeAllUserSessions(userId);
-    
+
     // In production, you would also blacklist all active tokens for this user
     console.log(`Logged out ${sessions.length} sessions for user ${userId}`);
   }
@@ -373,7 +444,7 @@ export class ProductionAuthService {
     const cookieStore = cookies();
     const isProduction = process.env.NODE_ENV === "production";
 
-    ["accessToken", "refreshToken", "sessionId"].forEach(name => {
+    ["accessToken", "refreshToken", "sessionId"].forEach((name) => {
       cookieStore.set(name, "", {
         httpOnly: true,
         secure: isProduction,
@@ -427,7 +498,7 @@ export class ProductionAuthService {
     const errors: string[] = [];
     let score = 0;
 
-    if (!password || typeof password !== 'string') {
+    if (!password || typeof password !== "string") {
       return { isValid: false, errors: ["Password is required"], score: 0 };
     }
 
@@ -477,7 +548,10 @@ export class ProductionAuthService {
 
 // Rate limiting for production
 export class ProductionRateLimiter {
-  private attempts = new Map<string, { count: number; lastAttempt: number; blockedUntil?: number }>();
+  private attempts = new Map<
+    string,
+    { count: number; lastAttempt: number; blockedUntil?: number }
+  >();
   private readonly maxAttempts = 5;
   private readonly windowMs = 15 * 60 * 1000; // 15 minutes
   private readonly blockDuration = 30 * 60 * 1000; // 30 minutes
@@ -525,7 +599,7 @@ export class ProductionRateLimiter {
     if (attemptData.count >= this.maxAttempts) {
       attemptData.blockedUntil = now + this.blockDuration;
       const retryAfter = Math.ceil(this.blockDuration / 1000);
-      
+
       return new Response(
         JSON.stringify({
           success: false,
@@ -553,18 +627,22 @@ export class ProductionRateLimiter {
   addHeaders(response: Response, request: NextRequest) {
     const identifier = this.getIdentifier(request);
     const attemptData = this.attempts.get(identifier);
-    
+
     if (attemptData) {
       response.headers.set("X-RateLimit-Limit", this.maxAttempts.toString());
-      response.headers.set("X-RateLimit-Remaining", Math.max(0, this.maxAttempts - attemptData.count).toString());
-      response.headers.set("X-RateLimit-Reset", new Date(attemptData.lastAttempt + this.windowMs).toISOString());
+      response.headers.set(
+        "X-RateLimit-Remaining",
+        Math.max(0, this.maxAttempts - attemptData.count).toString()
+      );
+      response.headers.set(
+        "X-RateLimit-Reset",
+        new Date(attemptData.lastAttempt + this.windowMs).toISOString()
+      );
     }
   }
 
   private getIdentifier(request: NextRequest): string {
-    const forwarded = request.headers.get("x-forwarded-for");
-    const ip = forwarded ? forwarded.split(",")[0] : request.ip || "unknown";
-    return ip;
+    return getClientIp(request);
   }
 }
 
@@ -585,12 +663,36 @@ export function hasPermission(userRole: string, requiredRole: string): boolean {
   return userLevel >= requiredLevel;
 }
 
-export function canAccessResource(userRole: string, resource: string, action: string): boolean {
+export function canAccessResource(
+  userRole: string,
+  resource: string,
+  action: string
+): boolean {
   const permissions: Record<string, Record<string, string[]>> = {
-    users: { create: ["admin"], read: ["admin", "manager"], update: ["admin"], delete: ["admin"] },
-    contacts: { create: ["admin", "manager", "agent"], read: ["admin", "manager", "agent"], update: ["admin", "manager", "agent"], delete: ["admin", "manager"] },
-    deals: { create: ["admin", "manager", "agent"], read: ["admin", "manager", "agent"], update: ["admin", "manager", "agent"], delete: ["admin", "manager"] },
-    campaigns: { create: ["admin", "manager"], read: ["admin", "manager", "agent"], update: ["admin", "manager"], delete: ["admin", "manager"] },
+    users: {
+      create: ["admin"],
+      read: ["admin", "manager"],
+      update: ["admin"],
+      delete: ["admin"],
+    },
+    contacts: {
+      create: ["admin", "manager", "agent"],
+      read: ["admin", "manager", "agent"],
+      update: ["admin", "manager", "agent"],
+      delete: ["admin", "manager"],
+    },
+    deals: {
+      create: ["admin", "manager", "agent"],
+      read: ["admin", "manager", "agent"],
+      update: ["admin", "manager", "agent"],
+      delete: ["admin", "manager"],
+    },
+    campaigns: {
+      create: ["admin", "manager"],
+      read: ["admin", "manager", "agent"],
+      update: ["admin", "manager"],
+      delete: ["admin", "manager"],
+    },
     analytics: { read: ["admin", "manager"] },
     settings: { read: ["admin"], update: ["admin"] },
   };

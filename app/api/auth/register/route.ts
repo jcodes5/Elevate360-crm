@@ -1,11 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { EnhancedAuthService } from "@/lib/auth-enhanced";
+import { ProductionAuthService } from "@/lib/auth-production";
 import { db } from "@/lib/database-config";
 import { validateAndSanitizeInput } from "@/lib/input-validation";
 import { logAuditEvent, AuditEventType } from "@/lib/audit-logger";
 import { AUTH_CONFIG } from "@/lib/auth-config";
 import { authRateLimiter } from "@/lib/enhanced-rate-limiter";
 import { validateCsrfToken } from "../csrf-token/route";
+import { getClientInfo } from "@/lib/request-utils";
 import type { User } from "@/types";
 
 // Enhanced password validation
@@ -258,7 +259,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Hash password with enhanced security
-    const hashedPassword = await EnhancedAuthService.hashPassword(password);
+    const hashedPassword = await ProductionAuthService.hashPassword(password);
 
     // Create organization
     const organizationData = {
@@ -317,7 +318,7 @@ export async function POST(request: NextRequest) {
     const user = await db.create("users", userData);
 
     // Generate tokens
-    const tokens = EnhancedAuthService.generateTokens(user);
+    const tokens = await ProductionAuthService.generateTokens(user, getClientInfo(request));
 
     // Remove password from response
     const { password: _, ...userWithoutPassword } = user;

@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { EnhancedAuthService } from "@/lib/auth-enhanced"
+import { ProductionAuthService } from "@/lib/auth-production"
 import { db } from "@/lib/database-config"
 import type { User } from "@/types"
 
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
 
     let decoded
     try {
-      decoded = EnhancedAuthService.verifyAccessToken(token)
+      decoded = await ProductionAuthService.verifyAccessToken(token)
       console.log("✅ Token decoded successfully for user:", decoded.userId)
     } catch (error) {
       console.log("❌ Token verification failed:", error)
@@ -39,14 +39,52 @@ export async function POST(request: NextRequest) {
       }, { status: 401 })
     }
 
-    // Update user onboarding status
-    console.log("📊 Updating user onboarding status...")
-    const updatedUser: any = await db.updateById("users", decoded.userId, {
+    // Prepare user profile update with all onboarding data
+    const userProfileUpdate: any = {
       isOnboardingCompleted: true,
-      phone: onboardingData?.phone,
       updatedAt: new Date()
-    })
+    };
 
+    // Add phone number if provided
+    if (onboardingData?.phone) {
+      userProfileUpdate.phone = onboardingData.phone;
+    }
+
+    // Note: timeZone field is intentionally omitted as it's not a valid field in the Prisma model
+
+    // Add notification preferences
+    // if (onboardingData?)
+    // userProfileUpdate.enableNotifications = onboardingData?.enableNotifications ?? true;
+    // userProfileUpdate.enableEmailMarketing = onboardingData?.enableEmailMarketing ?? true;
+    // userProfileUpdate.enableSMSMarketing = onboardingData?.enableSMSMarketing ?? false;
+    // userProfileUpdate.enableWhatsApp = onboardingData?.enableWhatsApp ?? false;
+
+    // Remove timeZone from user profile update as it's not a valid field in the Prisma model
+    // delete userProfileUpdate.timeZone;
+    // delete userProfileUpdate.enableNotifications;
+    // delete userProfileUpdate.enableEmailMarketing;
+    // delete userProfileUpdate.enableSMSMarketing;
+    // delete userProfileUpdate.enableWhatsApp;
+
+    // Update user onboarding status and profile
+    console.log("📊 Updating user onboarding status and profile...")
+    let updatedUser: any;
+    try {
+      updatedUser = await db.updateById("users", decoded.userId, userProfileUpdate)
+    } catch (error: any) {
+      // Handle database connection errors
+      if (error.message && error.message.includes('Database connection timeout')) {
+        console.error("❌ Database connection timeout:", error.message)
+        return NextResponse.json({ 
+          success: false, 
+          message: "Service temporarily unavailable. Please try again."
+        }, { status: 503 })
+      }
+      
+      // Re-throw other unexpected errors
+      throw error;
+    }
+    
     if (!updatedUser) {
       console.log("❌ User not found:", decoded.userId)
       return NextResponse.json({ 
@@ -61,10 +99,10 @@ export async function POST(request: NextRequest) {
     const { password: _, ...userWithoutPassword } = updatedUser as any
 
     // Generate new auth tokens with updated onboarding status
-    const tokens = EnhancedAuthService.generateTokens({
+    const tokens = await ProductionAuthService.generateTokens({
       ...updatedUser,
       isOnboardingCompleted: true
-    } as User)
+    } as User, { ipAddress: request.headers.get("x-forwarded-for") || request.ip || "unknown", userAgent: request.headers.get("user-agent") || "unknown" })
 
     console.log("🎉 Onboarding completed for user:", decoded.userId)
 

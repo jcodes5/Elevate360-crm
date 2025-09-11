@@ -274,29 +274,47 @@ model Task {
 
 // Campaign model
 model Campaign {
-  id             String         @id @default(cuid())
-  name           String
-  type           CampaignType
-  status         CampaignStatus @default(DRAFT)
-  subject        String?
-  content        String         @db.Text
-  targetAudience Json           // Array of contact IDs
-  scheduledAt    DateTime?
-  sentAt         DateTime?
-  metrics        Json           // Campaign metrics object
-  workflowId     String?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  id               String         @id @default(cuid())
+  name             String
+  type             CampaignType
+  status           CampaignStatus @default(DRAFT)
+  subject          String?
+  content          String         @db.Text
+  // Extended fields
+  channel          String?
+  category         String?
+  objective        String?
+  tags             Json            // Array<string>
+  isABTest         Boolean         @default(false)
+  abTestConfig     Json?
+  personalization  Json?           // Personalization fields configuration
+  utmParameters    Json?
+  compliance       Json?           // Compliance checks and results
+  timezone         String?         // IANA timezone
+  targetAudience   Json            // Audience config
+  scheduledAt      DateTime?
+  sentAt           DateTime?
+  completedAt      DateTime?
+  metrics          Json            // Metrics object
+  parentCampaignId String?
+  workflowId       String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 
   // Foreign keys
   organizationId String
   createdBy      String
 
   // Relations
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  creator      User         @relation(fields: [createdBy], references: [id], onDelete: Restrict)
-  workflow     Workflow?    @relation(fields: [workflowId], references: [id], onDelete: SetNull)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  creator        User         @relation(fields: [createdBy], references: [id], onDelete: Restrict)
+  workflow       Workflow?    @relation(fields: [workflowId], references: [id], onDelete: SetNull)
+  parentCampaign Campaign?    @relation("CampaignChildren", fields: [parentCampaignId], references: [id], onDelete: SetNull)
+  childCampaigns Campaign[]   @relation("CampaignChildren")
 
+  @@index([status])
+  @@index([scheduledAt])
+  @@index([sentAt])
   @@map("campaigns")
 }
 
