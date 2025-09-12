@@ -8,8 +8,8 @@ async function authRead(request: NextRequest) {
   if (!token) return { error: NextResponse.json({ success: false, message: 'Authentication required' } satisfies ApiResponse, { status: 401 }) }
   try {
     const payload = await ProductionAuthService.verifyAccessToken(token)
-    const allowed = canAccessResource('campaigns', 'read')
-    if (!allowed.includes(payload.role)) return { error: NextResponse.json({ success: false, message: 'Forbidden' } satisfies ApiResponse, { status: 403 }) }
+    const allowed = canAccessResource(payload.role, 'campaigns', 'read')
+    if (!allowed) return { error: NextResponse.json({ success: false, message: 'Forbidden' } satisfies ApiResponse, { status: 403 }) }
     return { payload }
   } catch { return { error: NextResponse.json({ success: false, message: 'Invalid token' } satisfies ApiResponse, { status: 401 }) } }
 }

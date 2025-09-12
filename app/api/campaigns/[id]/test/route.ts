@@ -7,8 +7,8 @@ async function authWrite(request: NextRequest) {
   if (!token) return { error: NextResponse.json({ success: false, message: 'Authentication required' } satisfies ApiResponse, { status: 401 }) }
   try {
     const payload = await ProductionAuthService.verifyAccessToken(token)
-    const allowed = canAccessResource('campaigns', 'update')
-    if (!allowed.includes(payload.role)) return { error: NextResponse.json({ success: false, message: 'Forbidden' } satisfies ApiResponse, { status: 403 }) }
+    const allowed = canAccessResource(payload.role, 'campaigns', 'update')
+    if (!allowed) return { error: NextResponse.json({ success: false, message: 'Forbidden' } satisfies ApiResponse, { status: 403 }) }
     return { payload }
   } catch { return { error: NextResponse.json({ success: false, message: 'Invalid token' } satisfies ApiResponse, { status: 401 }) } }
 }

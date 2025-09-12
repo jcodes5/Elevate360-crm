@@ -12,8 +12,8 @@ async function requireAuth(request: NextRequest) {
   if (!token) return { error: unauthorized('Authentication required') }
   try {
     const payload = await ProductionAuthService.verifyAccessToken(token)
-    const allowed = canAccessResource('campaigns', 'update')
-    if (!allowed.includes(payload.role)) return { error: unauthorized('Forbidden', 'FORBIDDEN', 403) }
+    const allowed = canAccessResource(payload.role, 'campaigns', 'update')
+    if (!allowed) return { error: unauthorized('Forbidden', 'FORBIDDEN', 403) }
     return { payload }
   } catch {
     return { error: unauthorized('Invalid or expired token', 'TOKEN_INVALID') }
