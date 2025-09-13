@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from "next/server"
 import { prisma } from '@/lib/db'
 import { ApiResponse } from '@/lib/models'
 import { ProductionAuthService, canAccessResource } from '@/lib/auth-production'
@@ -37,6 +37,28 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     })
     if (updated.organizationId !== payload.organizationId) return unauthorized('Forbidden', 'FORBIDDEN', 403)
     return NextResponse.json({ success: true, data: updated, message: 'Schedule updated' } satisfies ApiResponse)
+  } catch (e) {
+    return NextResponse.json({ success: false, message: 'Failed to schedule campaign' } satisfies ApiResponse, { status: 500 })
+  }
+}
+
+export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+  const auth = await requireAuth(request)
+  if ('error' in auth) return auth.error
+  const { payload } = auth
+  try {
+    const body = await request.json()
+    const updated = await prisma.campaign.update({
+      where: { id: params.id },
+      data: {
+        scheduledAt: body.scheduleTime ? new Date(body.scheduleTime) : (body.sendAt ? new Date(body.sendAt) : null),
+        timezone: body.timezone ?? undefined,
+        status: 'SCHEDULED',
+        updatedAt: new Date(),
+      },
+    })
+    if (updated.organizationId !== payload.organizationId) return unauthorized('Forbidden', 'FORBIDDEN', 403)
+    return NextResponse.json({ success: true, data: updated, message: 'Campaign scheduled' } satisfies ApiResponse)
   } catch (e) {
     return NextResponse.json({ success: false, message: 'Failed to schedule campaign' } satisfies ApiResponse, { status: 500 })
   }

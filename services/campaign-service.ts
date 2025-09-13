@@ -147,11 +147,29 @@ class CampaignService {
       },
       body: JSON.stringify({ scheduleTime }),
     })
-    
+
     const data: ApiResponse = await response.json()
-    
+
     if (!data.success) {
       throw new Error(data.message || "Failed to schedule campaign")
+    }
+  }
+
+  // Pause campaign
+  static async pauseCampaign(id: string): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/${id}/pause`, { method: "POST" })
+    const data: ApiResponse = await response.json()
+    if (!data.success) {
+      throw new Error(data.message || "Failed to pause campaign")
+    }
+  }
+
+  // Stop campaign
+  static async stopCampaign(id: string): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/${id}/stop`, { method: "POST" })
+    const data: ApiResponse = await response.json()
+    if (!data.success) {
+      throw new Error(data.message || "Failed to stop campaign")
     }
   }
 }
