@@ -75,6 +75,17 @@ model User {
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
+  // Onboarding fields
+  companySize           String?
+  industry              String?
+  businessGoals         Json     @default("[]") // Array of business goal IDs
+  website               String?
+  timeZone              String?
+  enableNotifications   Boolean  @default(true)
+  enableEmailMarketing  Boolean  @default(true)
+  enableSMSMarketing    Boolean  @default(false)
+  enableWhatsApp        Boolean  @default(false)
+
   // Foreign key
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)

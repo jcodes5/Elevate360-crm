@@ -1,13 +1,15 @@
-# Authentication Persistence Fix
+# Onboarding Completion Flow Enhancement
 
-## Issue
-Inconsistent authentication services causing token verification failures:
-- Login API uses EnhancedAuthService (no sessionId)
-- Verify API uses ProductionAuthService (expects sessionId)
-- Middleware uses EnhancedAuthService
+## Current Status
+- [x] Analyzed existing onboarding flow (backend API and frontend component)
+- [x] Identified issues with data persistence (timeZone and notification preferences not saved)
+- [x] Created enhancement plan
 
-## Tasks
-- [x] Update login API to use ProductionAuthService
-- [x] Update middleware to use ProductionAuthService
-- [x] Update refresh API to use ProductionAuthService
-- [x] Test authentication flow
+## Pending Tasks
+- [ ] Read current Prisma schema to understand User model structure
+- [ ] Update Prisma schema to add missing fields (timeZone, notification preferences)
+- [ ] Update backend API route to save all onboarding data
+- [ ] Review and update frontend component if needed
+- [ ] Run database migration after schema changes
+- [ ] Test complete onboarding flow end-to-end
+- [ ] Verify data persistence and auth token updates
