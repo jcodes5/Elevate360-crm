@@ -74,6 +74,7 @@ export interface TaskModel {
   // Reminders & Notifications
   reminders: TaskReminder[]
   notifications: TaskNotification[]
+  hasReminder?: boolean
   
   // Timestamps
   createdAt: Date
@@ -665,6 +666,8 @@ export interface TaskSearchParams {
   isOverdue?: boolean
   isCompleted?: boolean
   customFields?: Record<string, any>
+  entityType?: string
+  entityId?: string
   page?: number
   limit?: number
   sortBy?: string

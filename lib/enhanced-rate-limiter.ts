@@ -111,7 +111,7 @@ export class EnhancedRateLimiter {
       const blockUntil = now + this.config.blockDurationMs;
       blockedIPs.set(key, blockUntil);
       
-      // Log the incident (in production, send to monitoring system)
+      // Log the incident (in production, Will send to monitoring system)
       console.warn(`Rate limit exceeded for ${key}. IP blocked until ${new Date(blockUntil).toISOString()}`);
 
       const retryAfter = Math.ceil(this.config.blockDurationMs / 1000);
@@ -135,7 +135,7 @@ export class EnhancedRateLimiter {
       );
     }
 
-    // Add rate limit headers to successful requests
+    // Added rate limit headers to successful requests
     return null; // Continue processing
   }
 

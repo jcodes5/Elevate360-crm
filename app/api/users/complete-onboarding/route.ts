@@ -42,29 +42,51 @@ export async function POST(request: NextRequest) {
     // Prepare user profile update with all onboarding data
     const userProfileUpdate: any = {
       isOnboardingCompleted: true,
+      onboardingStep: 100, // Mark as fully completed
       updatedAt: new Date()
     };
 
-    // Add phone number if provided
+    // Add all onboarding fields from the form data
+    if (onboardingData?.companySize) {
+      userProfileUpdate.companySize = onboardingData.companySize;
+    }
+    
+    if (onboardingData?.industry) {
+      userProfileUpdate.industry = onboardingData.industry;
+    }
+    
+    if (onboardingData?.businessGoals && Array.isArray(onboardingData.businessGoals)) {
+      userProfileUpdate.businessGoals = JSON.stringify(onboardingData.businessGoals);
+    }
+    
     if (onboardingData?.phone) {
       userProfileUpdate.phone = onboardingData.phone;
     }
-
-    // Note: timeZone field is intentionally omitted as it's not a valid field in the Prisma model
-
-    // Add notification preferences
-    // if (onboardingData?)
-    // userProfileUpdate.enableNotifications = onboardingData?.enableNotifications ?? true;
-    // userProfileUpdate.enableEmailMarketing = onboardingData?.enableEmailMarketing ?? true;
-    // userProfileUpdate.enableSMSMarketing = onboardingData?.enableSMSMarketing ?? false;
-    // userProfileUpdate.enableWhatsApp = onboardingData?.enableWhatsApp ?? false;
-
-    // Remove timeZone from user profile update as it's not a valid field in the Prisma model
-    // delete userProfileUpdate.timeZone;
-    // delete userProfileUpdate.enableNotifications;
-    // delete userProfileUpdate.enableEmailMarketing;
-    // delete userProfileUpdate.enableSMSMarketing;
-    // delete userProfileUpdate.enableWhatsApp;
+    
+    if (onboardingData?.website) {
+      userProfileUpdate.website = onboardingData.website;
+    }
+    
+    if (onboardingData?.timeZone) {
+      userProfileUpdate.timeZone = onboardingData.timeZone;
+    }
+    
+    // Notification preferences
+    if (typeof onboardingData?.enableNotifications === 'boolean') {
+      userProfileUpdate.enableNotifications = onboardingData.enableNotifications;
+    }
+    
+    if (typeof onboardingData?.enableEmailMarketing === 'boolean') {
+      userProfileUpdate.enableEmailMarketing = onboardingData.enableEmailMarketing;
+    }
+    
+    if (typeof onboardingData?.enableSMSMarketing === 'boolean') {
+      userProfileUpdate.enableSMSMarketing = onboardingData.enableSMSMarketing;
+    }
+    
+    if (typeof onboardingData?.enableWhatsApp === 'boolean') {
+      userProfileUpdate.enableWhatsApp = onboardingData.enableWhatsApp;
+    }
 
     // Update user onboarding status and profile
     console.log("📊 Updating user onboarding status and profile...")

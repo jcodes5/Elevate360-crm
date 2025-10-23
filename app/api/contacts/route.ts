@@ -5,6 +5,10 @@ import { ContactStatus as PrismaContactStatus } from '@prisma/client'
 
 // GET /api/contacts - Search and list contacts
 export async function GET(request: NextRequest) {
+  const auth = await requireAuth(request, 'read')
+  if ('error' in auth) return auth.error
+  const { payload } = auth
+
   const startTime = Date.now()
 
   try {
@@ -29,7 +33,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Build where clause for filtering
-    const where: any = {}
+    const where: any = {
+      organizationId: payload.organizationId,
+    }
 
     if (params.query) {
       where.OR = [
@@ -150,9 +156,13 @@ export async function GET(request: NextRequest) {
 
 // POST /api/contacts - Create new contact
 export async function POST(request: NextRequest) {
+  const auth = await requireAuth(request, 'create')
+  if ('error' in auth) return auth.error
+  const { payload } = auth
+
   const startTime = Date.now()
   let transactionClient: any = null
-  
+
   try {
     const body = await request.json()
 
@@ -191,34 +201,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(errorResponse, { status: 400 })
     }
 
-    // Check if organization exists (for now, we'll use a default organization)
-    // In a real app, you'd get this from authentication context
-    let organizationId = body.organizationId
-    
-    // If no organizationId provided, try to get one from the database
-    if (!organizationId) {
-      const firstOrganization = await prisma.organization.findFirst()
-      if (firstOrganization) {
-        organizationId = firstOrganization.id
-      } else {
-        // Create a default organization if none exists
-        const defaultOrg = await prisma.organization.create({
-          data: {
-            name: "Default Organization",
-            domain: "",
-            settings: {},
-            subscription: {}
-          }
-        })
-        organizationId = defaultOrg.id
-      }
-    }
+    // Use organization from authenticated user
+    const organizationId = payload.organizationId
 
     // Check for duplicate email within organization
     const existingContact = await prisma.contact.findFirst({
       where: {
         email: body.email,
-        organizationId: organizationId
+        organizationId: payload.organizationId
       }
     })
 
@@ -283,13 +273,14 @@ export async function POST(request: NextRequest) {
       await tx.contactActivity.create({
         data: {
           contactId: createdContact.id,
+          userId: payload.userId,
+          createdBy: payload.userId,
           type: 'TAG_ADDED',
           description: `Contact created with status: ${createdContact.status}`,
           metadata: {
             source: createdContact.source,
             initialTags: createdContact.tags
-          },
-          createdBy: body.createdBy || 'system'
+          }
         }
       })
       
@@ -338,6 +329,10 @@ export async function POST(request: NextRequest) {
 
 // PUT /api/contacts/bulk - Bulk update contacts
 export async function PUT(request: NextRequest) {
+  const auth = await requireAuth(request, 'update')
+  if ('error' in auth) return auth.error
+  const { payload } = auth
+
   try {
     const { ids, updates } = await request.json()
 
@@ -431,10 +426,11 @@ export async function PUT(request: NextRequest) {
     // Create activity records for bulk update
     const activityData = ids.map(contactId => ({
       contactId,
+      userId: payload.userId,
       type: 'TAG_ADDED' as const,
       description: 'Bulk update performed',
       metadata: { updates: updateData },
-      createdBy: updates.updatedBy || 'system'
+      createdBy: payload.userId
     }))
 
     await prisma.contactActivity.createMany({
@@ -475,143 +471,77 @@ export async function PUT(request: NextRequest) {
 }
 
 // DELETE /api/contacts/bulk - Bulk delete contacts
-export async function DELETE(request: NextRequest) {
-  try {
-    const { ids } = await request.json()
+async function requireAuth(request: NextRequest, permission: string): Promise<{ payload: any } | { error: NextResponse }> {
+  // Try to get token from Authorization header or "token" cookie
+  const authHeader = request.headers.get('authorization') ?? ''
+  const headerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined
+  // NextRequest.cookies.get exists in Edge runtime; fallback to undefined if not present
+  const cookieToken = (request.cookies && typeof (request.cookies as any).get === 'function') ? (request.cookies as any).get('token')?.value : undefined
+  const token = headerToken || cookieToken
 
-    if (!ids || !Array.isArray(ids) || ids.length === 0) {
-      const errorResponse: ApiResponse = {
-        success: false,
-        message: 'Invalid or missing contact IDs',
-        errors: [{ code: 'VALIDATION_ERROR', message: 'ids array is required' }],
-        meta: {
-          timestamp: new Date(),
-          requestId: crypto.randomUUID(),
-          version: '1.0.0',
-        },
-      }
-      return NextResponse.json(errorResponse, { status: 400 })
-    }
-
-    // Verify contacts exist before deletion
-    const existingContacts = await prisma.contact.findMany({
-      where: {
-        id: { in: ids }
-      },
-      select: { id: true, firstName: true, lastName: true, email: true }
-    })
-
-    if (existingContacts.length === 0) {
-      const errorResponse: ApiResponse = {
-        success: false,
-        message: 'No contacts found to delete',
-        errors: [{ code: 'NOT_FOUND_ERROR', message: 'None of the specified contacts exist' }],
-        meta: {
-          timestamp: new Date(),
-          requestId: crypto.randomUUID(),
-          version: '1.0.0',
-        },
-      }
-      return NextResponse.json(errorResponse, { status: 404 })
-    }
-
-    // Use transaction to ensure data consistency
-    await prisma.$transaction(async (tx) => {
-      // Delete related activities first
-      await tx.contactActivity.deleteMany({
-        where: {
-          contactId: { in: ids }
-        }
-      })
-
-      // Delete related notes
-      await tx.contactNote.deleteMany({
-        where: {
-          contactId: { in: ids }
-        }
-      })
-
-      // Delete related client history
-      await tx.clientHistory.deleteMany({
-        where: {
-          contactId: { in: ids }
-        }
-      })
-
-      // Update related deals to remove contact association
-      await tx.deal.updateMany({
-        where: {
-          contactId: { in: ids }
-        },
-        data: {
-          contactId: undefined
-        }
-      })
-
-      // Update related tasks to remove contact association
-      await tx.task.updateMany({
-        where: {
-          contactId: { in: ids }
-        },
-        data: {
-          contactId: undefined
-        }
-      })
-
-      // Update related appointments to remove contact association
-      await tx.appointment.updateMany({
-        where: {
-          contactId: { in: ids }
-        },
-        data: {
-          contactId: undefined
-        }
-      })
-
-      // Finally delete the contacts
-      await tx.contact.deleteMany({
-        where: {
-          id: { in: ids }
-        }
-      })
-    })
-
-    const deletedCount = existingContacts.length
-    const notFoundCount = ids.length - existingContacts.length
-
-    const response: ApiResponse = {
-      success: true,
-      message: `${deletedCount} contacts deleted successfully${notFoundCount > 0 ? `, ${notFoundCount} not found` : ''}`,
-      data: {
-        deletedCount,
-        notFoundCount,
-        deletedContacts: existingContacts.map(c => ({ id: c.id, name: `${c.firstName} ${c.lastName}`, email: c.email }))
-      },
-      meta: {
-        timestamp: new Date(),
-        requestId: crypto.randomUUID(),
-        version: '1.0.0',
-      },
-    }
-
-    return NextResponse.json(response)
-  } catch (error) {
-    console.error('Error bulk deleting contacts:', error)
-
-    const errorResponse: ApiResponse = {
+  if (!token) {
+    const resp: ApiResponse = {
       success: false,
-      message: 'Failed to bulk delete contacts',
-      errors: [{
-        code: 'BULK_DELETE_ERROR',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      }],
-      meta: {
-        timestamp: new Date(),
-        requestId: crypto.randomUUID(),
-        version: '1.0.0',
-      },
+      message: 'Authentication required',
+      errors: [{ code: 'AUTH_REQUIRED', message: 'Missing authentication token' }],
+      meta: { timestamp: new Date(), requestId: crypto.randomUUID(), version: '1.0.0' },
+    }
+    return { error: NextResponse.json(resp, { status: 401 }) }
+  }
+
+  try {
+    // Decode JWT payload without verifying signature (reasonable for examples / dev);
+    // for production replace with a proper verification using a secret or public key.
+    let payload: any | null = null
+    const parts = token.split('.')
+    if (parts.length === 3) {
+      // base64url -> base64
+      let b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+      while (b64.length % 4) b64 += '='
+      const json = Buffer.from(b64, 'base64').toString('utf8')
+      payload = JSON.parse(json)
+    } else {
+      // token may be a base64-encoded JSON string
+      try {
+        const json = Buffer.from(token, 'base64').toString('utf8')
+        payload = JSON.parse(json)
+      } catch {
+        payload = null
+      }
     }
 
-    return NextResponse.json(errorResponse, { status: 500 })
+    if (!payload || !payload.userId || !payload.organizationId) {
+      const resp: ApiResponse = {
+        success: false,
+        message: 'Invalid authentication token',
+        errors: [{ code: 'AUTH_INVALID', message: 'Token missing required claims' }],
+        meta: { timestamp: new Date(), requestId: crypto.randomUUID(), version: '1.0.0' },
+      }
+      return { error: NextResponse.json(resp, { status: 401 }) }
+    }
+
+    // Optional permission check: payload.permissions can be an array of strings
+    if (permission) {
+      const perms = Array.isArray(payload.permissions) ? payload.permissions : []
+      if (perms.length > 0 && !perms.includes(permission)) {
+        const resp: ApiResponse = {
+          success: false,
+          message: 'Insufficient permissions',
+          errors: [{ code: 'AUTH_FORBIDDEN', message: `Missing permission: ${permission}` }],
+          meta: { timestamp: new Date(), requestId: crypto.randomUUID(), version: '1.0.0' },
+        }
+        return { error: NextResponse.json(resp, { status: 403 }) }
+      }
+    }
+
+    return { payload }
+  } catch (err) {
+    const resp: ApiResponse = {
+      success: false,
+      message: 'Failed to validate authentication token',
+      errors: [{ code: 'AUTH_ERROR', message: err instanceof Error ? err.message : 'Unknown error' }],
+      meta: { timestamp: new Date(), requestId: crypto.randomUUID(), version: '1.0.0' },
+    }
+    return { error: NextResponse.json(resp, { status: 401 }) }
   }
 }

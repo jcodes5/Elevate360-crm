@@ -3,11 +3,17 @@ import { AnalyticsModel, DashboardModel, KPIModel, ReportModel, PaginatedResult 
 export class AnalyticsService {
   private baseUrl = '/api/analytics'
 
+  private getAuthToken(): string {
+    // Get auth token from localStorage or wherever it's stored
+    return typeof window !== 'undefined' ? localStorage.getItem('authToken') || '' : '';
+  }
+
   async createDashboard(data: Partial<DashboardModel>): Promise<DashboardModel> {
     const response = await fetch(`${this.baseUrl}/dashboards`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.getAuthToken()}`
       },
       body: JSON.stringify(data),
     })
@@ -20,7 +26,11 @@ export class AnalyticsService {
   }
 
   async getDashboard(id: string): Promise<DashboardModel> {
-    const response = await fetch(`${this.baseUrl}/dashboards/${id}`)
+    const response = await fetch(`${this.baseUrl}/dashboards/${id}`, {
+      headers: {
+        'Authorization': `Bearer ${this.getAuthToken()}`
+      }
+    })
 
     if (!response.ok) {
       throw new Error(`Failed to get dashboard: ${response.statusText}`)
@@ -34,6 +44,7 @@ export class AnalyticsService {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.getAuthToken()}`
       },
       body: JSON.stringify(data),
     })
@@ -48,6 +59,9 @@ export class AnalyticsService {
   async deleteDashboard(id: string): Promise<void> {
     const response = await fetch(`${this.baseUrl}/dashboards/${id}`, {
       method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${this.getAuthToken()}`
+      }
     })
 
     if (!response.ok) {
@@ -68,7 +82,11 @@ export class AnalyticsService {
     if (options?.category) queryParams.append('category', options.category)
     if (options?.isPublic !== undefined) queryParams.append('isPublic', options.isPublic.toString())
 
-    const response = await fetch(`${this.baseUrl}/dashboards?${queryParams}`)
+    const response = await fetch(`${this.baseUrl}/dashboards?${queryParams}`, {
+      headers: {
+        'Authorization': `Bearer ${this.getAuthToken()}`
+      }
+    })
 
     if (!response.ok) {
       throw new Error(`Failed to get dashboards: ${response.statusText}`)

@@ -22,13 +22,20 @@ export interface UpdateContactData extends Partial<CreateContactData> {
 }
 
 export class ContactService {
+  private static getAuthHeaders(): Record<string, string> {
+    // Use cookies for authentication instead of manual headers
+    // The server will handle token extraction from cookies
+    return {
+      'Content-Type': 'application/json',
+    };
+  }
+
   static async createContact(data: CreateContactData): Promise<Contact> {
     try {
       const response = await fetch('/api/contacts', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        credentials: 'include',
+        headers: this.getAuthHeaders(),
         body: JSON.stringify(data),
       });
 
@@ -47,7 +54,11 @@ export class ContactService {
 
   static async getAllContacts(): Promise<Contact[]> {
     try {
-      const response = await fetch('/api/contacts');
+      const response = await fetch('/api/contacts', {
+        method: 'GET',
+        credentials: 'include',
+        headers: this.getAuthHeaders()
+      });
       
       if (!response.ok) {
         throw new Error(`Failed to fetch contacts: ${response.statusText}`);
@@ -83,7 +94,11 @@ export class ContactService {
 
   static async getContactById(id: string): Promise<Contact | null> {
     try {
-      const response = await fetch(`/api/contacts/${id}`);
+      const response = await fetch(`/api/contacts/${id}`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: this.getAuthHeaders()
+      });
       
       if (!response.ok) {
         if (response.status === 404) {
@@ -112,9 +127,8 @@ export class ContactService {
       const { id, ...updateData } = data;
       const response = await fetch(`/api/contacts/${id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        credentials: 'include',
+        headers: this.getAuthHeaders(),
         body: JSON.stringify(updateData),
       });
 
@@ -134,6 +148,8 @@ export class ContactService {
     try {
       const response = await fetch(`/api/contacts/${id}`, {
         method: 'DELETE',
+        credentials: 'include',
+        headers: this.getAuthHeaders()
       });
 
       if (!response.ok) {
@@ -147,7 +163,11 @@ export class ContactService {
 
   static async searchContacts(query: string): Promise<Contact[]> {
     try {
-      const response = await fetch(`/api/contacts?query=${encodeURIComponent(query)}`);
+      const response = await fetch(`/api/contacts?query=${encodeURIComponent(query)}`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: this.getAuthHeaders()
+      });
       
       if (!response.ok) {
         throw new Error(`Failed to search contacts: ${response.statusText}`);

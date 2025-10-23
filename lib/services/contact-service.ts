@@ -3,11 +3,17 @@ import { ContactModel, ContactSearchParams, ContactStats, PaginatedResult, Searc
 export class ContactService {
   private baseUrl = '/api/contacts'
 
+  private getAuthToken(): string {
+    // Get auth token from localStorage or wherever it's stored
+    return typeof window !== 'undefined' ? localStorage.getItem('authToken') || '' : '';
+  }
+
   async createContact(data: Partial<ContactModel>): Promise<ContactModel> {
     const response = await fetch(this.baseUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.getAuthToken()}`
       },
       body: JSON.stringify(data),
     })
@@ -20,7 +26,11 @@ export class ContactService {
   }
 
   async getContact(id: string): Promise<ContactModel> {
-    const response = await fetch(`${this.baseUrl}/${id}`)
+    const response = await fetch(`${this.baseUrl}/${id}`, {
+      headers: {
+        'Authorization': `Bearer ${this.getAuthToken()}`
+      }
+    })
 
     if (!response.ok) {
       throw new Error(`Failed to get contact: ${response.statusText}`)
@@ -34,6 +44,7 @@ export class ContactService {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.getAuthToken()}`
       },
       body: JSON.stringify(data),
     })
@@ -48,6 +59,9 @@ export class ContactService {
   async deleteContact(id: string): Promise<void> {
     const response = await fetch(`${this.baseUrl}/${id}`, {
       method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${this.getAuthToken()}`
+      }
     })
 
     if (!response.ok) {
@@ -82,7 +96,11 @@ export class ContactService {
     if (params.sortBy) queryParams.append('sortBy', params.sortBy)
     if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder)
 
-    const response = await fetch(`${this.baseUrl}?${queryParams}`)
+    const response = await fetch(`${this.baseUrl}?${queryParams}`, {
+      headers: {
+        'Authorization': `Bearer ${this.getAuthToken()}`
+      }
+    })
 
     if (!response.ok) {
       throw new Error(`Failed to search contacts: ${response.statusText}`)
@@ -108,7 +126,11 @@ export class ContactService {
       })
     }
 
-    const response = await fetch(`/api/contacts/stats?${queryParams}`)
+    const response = await fetch(`/api/contacts/stats?${queryParams}`, {
+      headers: {
+        'Authorization': `Bearer ${this.getAuthToken()}`
+      }
+    })
 
     if (!response.ok) {
       throw new Error(`Failed to get contact stats: ${response.statusText}`)
@@ -134,7 +156,11 @@ export class ContactService {
       })
     }
 
-    const response = await fetch(`/api/contacts/dashboard?${queryParams}`)
+    const response = await fetch(`/api/contacts/dashboard?${queryParams}`, {
+      headers: {
+        'Authorization': `Bearer ${this.getAuthToken()}`
+      }
+    })
 
     if (!response.ok) {
       throw new Error(`Failed to get contact dashboard data: ${response.statusText}`)

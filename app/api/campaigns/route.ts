@@ -48,6 +48,7 @@ export async function GET(request: NextRequest) {
 
     const where: any = {
       organizationId: payload.organizationId,
+      createdBy: payload.userId,
     }
 
     if (query) {

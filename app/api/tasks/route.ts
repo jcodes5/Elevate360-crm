@@ -1,23 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { TaskModel, TaskSearchParams, PaginatedResult, ApiResponse } from '@/lib/models'
+import { ProductionAuthService, canAccessResource } from '@/lib/auth-production'
+
+function unauthorized(message = 'Authentication required', code = 'UNAUTHORIZED', status = 401) {
+  return NextResponse.json({ success: false, message, errors: [{ code, message }] } satisfies ApiResponse, { status })
+}
+
+async function requireAuth(request: NextRequest, action: 'read' | 'create' | 'update' | 'delete') {
+  const token = ProductionAuthService.getTokenFromRequest(request)
+  if (!token) return { error: unauthorized('Authentication required') }
+  try {
+    const payload = await ProductionAuthService.verifyAccessToken(token)
+    const allowed = canAccessResource(payload.role, 'tasks', action)
+    if (!allowed) {
+      return { error: unauthorized('Forbidden', 'FORBIDDEN', 403) }
+    }
+    return { payload }
+  } catch {
+    return { error: unauthorized('Invalid or expired token', 'TOKEN_INVALID') }
+  }
+}
 
 // GET /api/tasks - Search and list tasks
 export async function GET(request: NextRequest) {
+  const auth = await requireAuth(request, 'read')
+  if ('error' in auth) return auth.error
+  const { payload } = auth
+
   try {
     const { searchParams } = new URL(request.url)
     
     const params: TaskSearchParams = {
       query: searchParams.get('query') || undefined,
-      status: searchParams.get('status') as any || undefined,
-      priority: searchParams.get('priority') as any || undefined,
-      type: searchParams.get('type') as any || undefined,
-      assignedTo: searchParams.get('assignedTo') || undefined,
-      createdBy: searchParams.get('createdBy') || undefined,
+      status: searchParams.get('status')?.split(',') as any || undefined,
+      priority: searchParams.get('priority')?.split(',') as any || undefined,
+      type: searchParams.get('type')?.split(',') as any || undefined,
+      assignedTo: searchParams.get('assignedTo')?.split(',') || undefined,
+      createdBy: searchParams.get('createdBy')?.split(',') || undefined,
       entityType: searchParams.get('entityType') || undefined,
       entityId: searchParams.get('entityId') || undefined,
       tags: searchParams.get('tags')?.split(',') || undefined,
-      dueDateFrom: searchParams.get('dueDateFrom') ? new Date(searchParams.get('dueDateFrom')!) : undefined,
-      dueDateTo: searchParams.get('dueDateTo') ? new Date(searchParams.get('dueDateTo')!) : undefined,
+      dueBefore: searchParams.get('dueDateFrom') ? new Date(searchParams.get('dueDateFrom')!) : undefined,
+      dueAfter: searchParams.get('dueDateTo') ? new Date(searchParams.get('dueDateTo')!) : undefined,
       completedAfter: searchParams.get('completedAfter') ? new Date(searchParams.get('completedAfter')!) : undefined,
       completedBefore: searchParams.get('completedBefore') ? new Date(searchParams.get('completedBefore')!) : undefined,
       createdAfter: searchParams.get('createdAfter') ? new Date(searchParams.get('createdAfter')!) : undefined,
@@ -30,7 +54,8 @@ export async function GET(request: NextRequest) {
       sortOrder: searchParams.get('sortOrder') as 'asc' | 'desc' || 'desc',
     }
 
-    // TODO: Implement actual database query
+    // TODO: Implement actual database query with user isolation
+    // For now, return empty results - needs implementation
     const mockTasks: TaskModel[] = []
     const total = 0
 
@@ -83,6 +108,10 @@ export async function GET(request: NextRequest) {
 
 // POST /api/tasks - Create new task
 export async function POST(request: NextRequest) {
+  const auth = await requireAuth(request, 'create')
+  if ('error' in auth) return auth.error
+  const { payload } = auth
+
   try {
     const body = await request.json()
     
@@ -103,10 +132,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(errorResponse, { status: 400 })
     }
 
-    // TODO: Implement actual task creation logic
+    // TODO: Implement actual task creation logic with user isolation
     const newTask: TaskModel = {
       id: crypto.randomUUID(),
-      organizationId: 'org_' + crypto.randomUUID(),
+      organizationId: payload.organizationId,
+      assignedTo: payload.userId, // Assign to current user by default
       ...body,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -157,6 +187,10 @@ export async function POST(request: NextRequest) {
 
 // PUT /api/tasks/bulk - Bulk update tasks
 export async function PUT(request: NextRequest) {
+  const auth = await requireAuth(request, 'update')
+  if ('error' in auth) return auth.error
+  const { payload } = auth
+
   try {
     const { ids, updates } = await request.json()
     
@@ -212,6 +246,10 @@ export async function PUT(request: NextRequest) {
 
 // DELETE /api/tasks/bulk - Bulk delete tasks
 export async function DELETE(request: NextRequest) {
+  const auth = await requireAuth(request, 'delete')
+  if ('error' in auth) return auth.error
+  const { payload } = auth
+
   try {
     const { ids } = await request.json()
     

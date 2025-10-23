@@ -3,11 +3,17 @@ import { CampaignModel, CampaignSearchParams, CampaignStats, CampaignAnalytics, 
 export class CampaignService {
   private baseUrl = '/api/campaigns'
 
+  private getAuthToken(): string {
+    // Get auth token from localStorage or wherever it's stored
+    return typeof window !== 'undefined' ? localStorage.getItem('authToken') || '' : '';
+  }
+
   async createCampaign(data: Partial<CampaignModel>): Promise<CampaignModel> {
     const response = await fetch(this.baseUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.getAuthToken()}`
       },
       body: JSON.stringify(data),
     })
@@ -20,7 +26,11 @@ export class CampaignService {
   }
 
   async getCampaign(id: string): Promise<CampaignModel> {
-    const response = await fetch(`${this.baseUrl}/${id}`)
+    const response = await fetch(`${this.baseUrl}/${id}`, {
+      headers: {
+        'Authorization': `Bearer ${this.getAuthToken()}`
+      }
+    })
 
     if (!response.ok) {
       throw new Error(`Failed to get campaign: ${response.statusText}`)
@@ -34,6 +44,7 @@ export class CampaignService {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.getAuthToken()}`
       },
       body: JSON.stringify(data),
     })
@@ -48,6 +59,9 @@ export class CampaignService {
   async deleteCampaign(id: string): Promise<void> {
     const response = await fetch(`${this.baseUrl}/${id}`, {
       method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${this.getAuthToken()}`
+      }
     })
 
     if (!response.ok) {
@@ -57,28 +71,23 @@ export class CampaignService {
 
   async searchCampaigns(params: CampaignSearchParams): Promise<PaginatedResult<CampaignModel>> {
     const queryParams = new URLSearchParams()
-    
+
     if (params.query) queryParams.append('query', params.query)
-    if (params.type) queryParams.append('type', params.type)
-    if (params.status) queryParams.append('status', params.status)
-    if (params.channel) queryParams.append('channel', params.channel)
-    if (params.createdBy) queryParams.append('createdBy', params.createdBy)
+    if (params.type) queryParams.append('type', Array.isArray(params.type) ? params.type.join(',') : params.type)
+    if (params.status) queryParams.append('status', Array.isArray(params.status) ? params.status.join(',') : params.status)
+    if (params.channel) queryParams.append('channel', Array.isArray(params.channel) ? params.channel.join(',') : params.channel)
+    if (params.createdBy) queryParams.append('createdBy', Array.isArray(params.createdBy) ? params.createdBy.join(',') : params.createdBy)
     if (params.tags?.length) queryParams.append('tags', params.tags.join(','))
-    if (params.audience?.length) queryParams.append('audience', params.audience.join(','))
-    if (params.budgetMin) queryParams.append('budgetMin', params.budgetMin.toString())
-    if (params.budgetMax) queryParams.append('budgetMax', params.budgetMax.toString())
-    if (params.startDateFrom) queryParams.append('startDateFrom', params.startDateFrom.toISOString())
-    if (params.startDateTo) queryParams.append('startDateTo', params.startDateTo.toISOString())
-    if (params.endDateFrom) queryParams.append('endDateFrom', params.endDateFrom.toISOString())
-    if (params.endDateTo) queryParams.append('endDateTo', params.endDateTo.toISOString())
-    if (params.createdAfter) queryParams.append('createdAfter', params.createdAfter.toISOString())
-    if (params.createdBefore) queryParams.append('createdBefore', params.createdBefore.toISOString())
     if (params.page) queryParams.append('page', params.page.toString())
     if (params.limit) queryParams.append('limit', params.limit.toString())
     if (params.sortBy) queryParams.append('sortBy', params.sortBy)
     if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder)
 
-    const response = await fetch(`${this.baseUrl}?${queryParams}`)
+    const response = await fetch(`${this.baseUrl}?${queryParams}`, {
+      headers: {
+        'Authorization': `Bearer ${this.getAuthToken()}`
+      }
+    })
 
     if (!response.ok) {
       throw new Error(`Failed to search campaigns: ${response.statusText}`)
@@ -89,7 +98,7 @@ export class CampaignService {
 
   async getCampaignStats(filters?: Partial<CampaignSearchParams>): Promise<CampaignStats> {
     const queryParams = new URLSearchParams()
-    
+
     if (filters) {
       Object.entries(filters).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
@@ -104,7 +113,11 @@ export class CampaignService {
       })
     }
 
-    const response = await fetch(`${this.baseUrl}/stats?${queryParams}`)
+    const response = await fetch(`${this.baseUrl}/stats?${queryParams}`, {
+      headers: {
+        'Authorization': `Bearer ${this.getAuthToken()}`
+      }
+    })
 
     if (!response.ok) {
       throw new Error(`Failed to get campaign stats: ${response.statusText}`)
@@ -117,7 +130,11 @@ export class CampaignService {
     const queryParams = new URLSearchParams()
     if (metrics?.length) queryParams.append('metrics', metrics.join(','))
 
-    const response = await fetch(`${this.baseUrl}/${campaignId}/analytics?${queryParams}`)
+    const response = await fetch(`${this.baseUrl}/${campaignId}/analytics?${queryParams}`, {
+      headers: {
+        'Authorization': `Bearer ${this.getAuthToken()}`
+      }
+    })
 
     if (!response.ok) {
       throw new Error(`Failed to get campaign analytics: ${response.statusText}`)
@@ -129,6 +146,9 @@ export class CampaignService {
   async startCampaign(campaignId: string): Promise<CampaignModel> {
     const response = await fetch(`${this.baseUrl}/${campaignId}/start`, {
       method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.getAuthToken()}`
+      }
     })
 
     if (!response.ok) {
@@ -141,6 +161,9 @@ export class CampaignService {
   async pauseCampaign(campaignId: string): Promise<CampaignModel> {
     const response = await fetch(`${this.baseUrl}/${campaignId}/pause`, {
       method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.getAuthToken()}`
+      }
     })
 
     if (!response.ok) {
@@ -153,6 +176,9 @@ export class CampaignService {
   async stopCampaign(campaignId: string): Promise<CampaignModel> {
     const response = await fetch(`${this.baseUrl}/${campaignId}/stop`, {
       method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.getAuthToken()}`
+      }
     })
 
     if (!response.ok) {
@@ -439,6 +465,7 @@ export class CampaignService {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.getAuthToken()}`
       },
       body: JSON.stringify({ ids, updates }),
     })

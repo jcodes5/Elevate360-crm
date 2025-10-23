@@ -3,11 +3,17 @@ import { DealModel, DealSearchParams, DealStats, DealForecast, PipelineModel, Pa
 export class DealService {
   private baseUrl = '/api/deals'
 
+  private getAuthToken(): string {
+    // Get auth token from localStorage or wherever it's stored
+    return typeof window !== 'undefined' ? localStorage.getItem('authToken') || '' : '';
+  }
+
   async createDeal(data: Partial<DealModel>): Promise<DealModel> {
     const response = await fetch(this.baseUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.getAuthToken()}`
       },
       body: JSON.stringify(data),
     })
@@ -20,7 +26,11 @@ export class DealService {
   }
 
   async getDeal(id: string): Promise<DealModel> {
-    const response = await fetch(`${this.baseUrl}/${id}`)
+    const response = await fetch(`${this.baseUrl}/${id}`, {
+      headers: {
+        'Authorization': `Bearer ${this.getAuthToken()}`
+      }
+    })
 
     if (!response.ok) {
       throw new Error(`Failed to get deal: ${response.statusText}`)
@@ -34,6 +44,7 @@ export class DealService {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.getAuthToken()}`
       },
       body: JSON.stringify(data),
     })
@@ -48,6 +59,9 @@ export class DealService {
   async deleteDeal(id: string): Promise<void> {
     const response = await fetch(`${this.baseUrl}/${id}`, {
       method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${this.getAuthToken()}`
+      }
     })
 
     if (!response.ok) {
@@ -57,31 +71,31 @@ export class DealService {
 
   async searchDeals(params: DealSearchParams): Promise<PaginatedResult<DealModel>> {
     const queryParams = new URLSearchParams()
-    
+
     if (params.query) queryParams.append('query', params.query)
-    if (params.pipelineId) queryParams.append('pipelineId', params.pipelineId)
-    if (params.stageId) queryParams.append('stageId', params.stageId)
-    if (params.assignedTo) queryParams.append('assignedTo', params.assignedTo)
-    if (params.contactId) queryParams.append('contactId', params.contactId)
-    if (params.status) queryParams.append('status', params.status)
-    if (params.type) queryParams.append('type', params.type)
-    if (params.priority) queryParams.append('priority', params.priority)
-    if (params.source) queryParams.append('source', params.source)
+    if (params.pipelineIds?.length) queryParams.append('pipelineId', params.pipelineIds.join(','))
+    if (params.stageIds?.length) queryParams.append('stageIds', params.stageIds.join(','))
+    if (params.assignedTo?.length) queryParams.append('assignedTo', params.assignedTo.join(','))
+    if (params.status?.length) queryParams.append('status', params.status.join(','))
     if (params.tags?.length) queryParams.append('tags', params.tags.join(','))
     if (params.valueMin) queryParams.append('valueMin', params.valueMin.toString())
     if (params.valueMax) queryParams.append('valueMax', params.valueMax.toString())
     if (params.probabilityMin) queryParams.append('probabilityMin', params.probabilityMin.toString())
     if (params.probabilityMax) queryParams.append('probabilityMax', params.probabilityMax.toString())
-    if (params.expectedCloseDateFrom) queryParams.append('expectedCloseDateFrom', params.expectedCloseDateFrom.toISOString())
-    if (params.expectedCloseDateTo) queryParams.append('expectedCloseDateTo', params.expectedCloseDateTo.toISOString())
-    if (params.createdAfter) queryParams.append('createdAfter', params.createdAfter.toISOString())
-    if (params.createdBefore) queryParams.append('createdBefore', params.createdBefore.toISOString())
+    if (params.expectedCloseAfter) queryParams.append('expectedCloseDateFrom', params.expectedCloseAfter.toISOString())
+    if (params.expectedCloseBefore) queryParams.append('expectedCloseDateTo', params.expectedCloseBefore.toISOString())
+    if (params.actualCloseAfter) queryParams.append('actualCloseAfter', params.actualCloseAfter.toISOString())
+    if (params.actualCloseBefore) queryParams.append('actualCloseBefore', params.actualCloseBefore.toISOString())
     if (params.page) queryParams.append('page', params.page.toString())
     if (params.limit) queryParams.append('limit', params.limit.toString())
     if (params.sortBy) queryParams.append('sortBy', params.sortBy)
     if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder)
 
-    const response = await fetch(`${this.baseUrl}?${queryParams}`)
+    const response = await fetch(`${this.baseUrl}?${queryParams}`, {
+      headers: {
+        'Authorization': `Bearer ${this.getAuthToken()}`
+      }
+    })
 
     if (!response.ok) {
       throw new Error(`Failed to search deals: ${response.statusText}`)
@@ -107,7 +121,11 @@ export class DealService {
       })
     }
 
-    const response = await fetch(`${this.baseUrl}/stats?${queryParams}`)
+    const response = await fetch(`${this.baseUrl}/stats?${queryParams}`, {
+      headers: {
+        'Authorization': `Bearer ${this.getAuthToken()}`
+      }
+    })
 
     if (!response.ok) {
       throw new Error(`Failed to get deal stats: ${response.statusText}`)
@@ -127,6 +145,7 @@ export class DealService {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.getAuthToken()}`
       },
       body: JSON.stringify(options),
     })
@@ -143,6 +162,7 @@ export class DealService {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.getAuthToken()}`
       },
       body: JSON.stringify({ stageId, notes }),
     })
@@ -159,6 +179,7 @@ export class DealService {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.getAuthToken()}`
       },
       body: JSON.stringify({ actualValue, winReason }),
     })
@@ -175,6 +196,7 @@ export class DealService {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.getAuthToken()}`
       },
       body: JSON.stringify({ lossReason, competitorId }),
     })
@@ -197,6 +219,7 @@ export class DealService {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.getAuthToken()}`
       },
       body: JSON.stringify(productData),
     })
@@ -211,6 +234,9 @@ export class DealService {
   async removeProduct(dealId: string, productId: string): Promise<DealModel> {
     const response = await fetch(`${this.baseUrl}/${dealId}/products/${productId}`, {
       method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${this.getAuthToken()}`
+      }
     })
 
     if (!response.ok) {
@@ -225,6 +251,7 @@ export class DealService {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.getAuthToken()}`
       },
       body: JSON.stringify({ ids, updates }),
     })
@@ -246,6 +273,7 @@ export class DealService {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.getAuthToken()}`
       },
       body: JSON.stringify(options),
     })
@@ -262,6 +290,7 @@ export class DealService {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.getAuthToken()}`
       },
       body: JSON.stringify({ userId }),
     })
@@ -288,7 +317,11 @@ export class DealService {
     if (options?.dateFrom) queryParams.append('dateFrom', options.dateFrom.toISOString())
     if (options?.dateTo) queryParams.append('dateTo', options.dateTo.toISOString())
 
-    const response = await fetch(`${this.baseUrl}/${dealId}/activities?${queryParams}`)
+    const response = await fetch(`${this.baseUrl}/${dealId}/activities?${queryParams}`, {
+      headers: {
+        'Authorization': `Bearer ${this.getAuthToken()}`
+      }
+    })
 
     if (!response.ok) {
       throw new Error(`Failed to get deal activities: ${response.statusText}`)
@@ -302,6 +335,7 @@ export class DealService {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.getAuthToken()}`
       },
       body: JSON.stringify({ content, isPrivate }),
     })
@@ -320,6 +354,9 @@ export class DealService {
 
     const response = await fetch(`${this.baseUrl}/${dealId}/documents`, {
       method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.getAuthToken()}`
+      },
       body: formData,
     })
 
@@ -335,6 +372,7 @@ export class DealService {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.getAuthToken()}`
       },
       body: JSON.stringify({ probability, reason }),
     })
@@ -357,6 +395,7 @@ export class DealService {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.getAuthToken()}`
       },
       body: JSON.stringify(competitorData),
     })
@@ -379,6 +418,7 @@ export class DealService {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.getAuthToken()}`
       },
       body: JSON.stringify(proposalData),
     })
@@ -405,6 +445,7 @@ export class DealService {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.getAuthToken()}`
       },
       body: JSON.stringify(quoteData),
     })

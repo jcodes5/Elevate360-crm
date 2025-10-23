@@ -99,6 +99,11 @@ model User {
   createdWorkflows Workflow[]
   workflowExecutions WorkflowExecution[]
   clientHistoryEntries ClientHistory[]
+  contactNotes ContactNote[]
+  contactActivities ContactActivity[]
+  dealActivities DealActivity[]
+  workflowExecutionSteps WorkflowExecutionStep[]
+  clientHistory ClientHistory[] @relation("ClientHistoryUser")
 
   @@map("users")
 }
@@ -146,9 +151,13 @@ model ContactNote {
   createdBy String
   createdAt DateTime @default(now())
 
-  // Foreign key
+  // Foreign keys
   contactId String
-  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  userId    String
+
+  // Relations
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("contact_notes")
 }
@@ -162,9 +171,13 @@ model ContactActivity {
   createdBy   String
   createdAt   DateTime     @default(now())
 
-  // Foreign key
+  // Foreign keys
   contactId String
-  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  userId    String
+
+  // Relations
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("contact_activities")
 }
@@ -248,9 +261,13 @@ model DealActivity {
   createdBy     String
   createdAt     DateTime         @default(now())
 
-  // Foreign key
+  // Foreign keys
   dealId String
-  deal   Deal   @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  userId String
+
+  // Relations
+  deal Deal @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("deal_activities")
 }
@@ -430,8 +447,12 @@ model WorkflowExecutionStep {
   createdAt    DateTime              @default(now())
   updatedAt    DateTime              @updatedAt
 
+  // Foreign keys
+  userId String?
+
   // Relations
-  execution    WorkflowExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  execution WorkflowExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  user      User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([executionId])
   @@index([nodeId])
@@ -452,11 +473,13 @@ model ClientHistory {
   // Foreign keys
   contactId      String
   organizationId String
+  userId         String
 
   // Relations
   contact      Contact      @relation(fields: [contactId], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   creator      User         @relation(fields: [createdBy], references: [id], onDelete: Restrict)
+  user         User         @relation("ClientHistoryUser", fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("client_history")
 }

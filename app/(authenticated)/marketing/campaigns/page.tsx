@@ -95,7 +95,13 @@ export default function CampaignsPage() {
         setError(null)
 
         const list = await CampaignService.getAllCampaigns({ limit: 100 })
-        const resStats = await fetch('/api/campaigns/stats')
+        const resStats = await fetch('/api/campaigns/stats', {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        })
         const statsJson = await resStats.json()
 
         if (!isMounted) return
@@ -223,7 +229,13 @@ export default function CampaignsPage() {
       setLoading(true)
       setError(null)
       const list = await CampaignService.getAllCampaigns({ limit: 100 })
-      const resStats = await fetch('/api/campaigns/stats')
+      const resStats = await fetch('/api/campaigns/stats', {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
       const statsJson = await resStats.json()
       setCampaigns(list.data)
       if (statsJson.success) setCampaignStats(statsJson.data)

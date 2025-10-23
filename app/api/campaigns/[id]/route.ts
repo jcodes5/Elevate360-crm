@@ -42,7 +42,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   try {
     const body = await request.json()
     const updated = await prisma.campaign.update({
-      where: { id: params.id },
+      where: { id: params.id, organizationId: payload.organizationId },
       data: {
         name: body.name ?? undefined,
         type: body.type ? body.type.toUpperCase() : undefined,
@@ -69,9 +69,6 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         updatedAt: new Date(),
       },
     })
-    if (updated.organizationId !== payload.organizationId) {
-      return NextResponse.json({ success: false, message: 'Forbidden' } satisfies ApiResponse, { status: 403 })
-    }
     return NextResponse.json({ success: true, data: updated, message: 'Campaign updated successfully' } satisfies ApiResponse)
   } catch (e) {
     return NextResponse.json({ success: false, message: 'Failed to update campaign' } satisfies ApiResponse, { status: 500 })

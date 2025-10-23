@@ -34,19 +34,37 @@ import { useRouter } from "next/navigation"
 
 // API fetching functions
 const fetchDashboardStats = async () => {
-  const response = await fetch('/api/dashboard/stats')
+  const response = await fetch('/api/dashboard/stats', {
+    method: 'GET',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+    }
+  })
   const data = await response.json()
   return data.data
 }
 
 const fetchRecentActivities = async () => {
-  const response = await fetch('/api/dashboard/activities')
+  const response = await fetch('/api/dashboard/activities', {
+    method: 'GET',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+    }
+  })
   const data = await response.json()
   return data.data
 }
 
 const fetchUpcomingTasks = async () => {
-  const response = await fetch('/api/dashboard/tasks')
+  const response = await fetch('/api/dashboard/tasks', {
+    method: 'GET',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+    }
+  })
   const data = await response.json()
   return data.data
 }
